@@ -1,0 +1,26 @@
+{
+  "name": "@reilai/app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rspeedy dev",
+    "build": "rspeedy build",
+    "check-types": "tsc --noEmit -p src/tsconfig.json",
+    "test": "bun test --pass-with-no-tests src"
+  },
+  "dependencies": {
+    "@lynx-js/react": "^0.126.2",
+    "@reilai/brand": "workspace:*",
+    "@reilai/i18n": "workspace:*",
+    "@reilai/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@lynx-js/react-rsbuild-plugin": "^0.20.3",
+    "@lynx-js/rspeedy": "^0.18.0",
+    "@lynx-js/template-webpack-plugin": "^0.16.2",
+    "@lynx-js/types": "^4.1.0",
+    "@rsbuild/core": "2.2.9",
+    "@types/react": "^19.2.18"
+  }
+}

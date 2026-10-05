@@ -1,0 +1,78 @@
+.chat-divider { height: 1px; background-color: var(--border); }
+.chat-list { flex: 1; width: 100%; }
+.chat-intro { display: flex; flex-direction: column; align-items: center; padding: 28px 32px 18px 32px; }
+
+.ubub-row { display: flex; flex-direction: row; justify-content: flex-end; padding: 6px 14px 6px 56px; }
+.ubub {
+  background-color: var(--user-bubble);
+  border-radius: 20px;
+  border-bottom-right-radius: 6px;
+  padding: 10px 14px;
+  max-width: 640px;
+}
+.atext { padding: 6px 18px 4px 18px; max-width: 820px; }
+.caret { width: 8px; height: 16px; border-radius: 2px; background-color: var(--primary); margin-top: 2px; }
+
+.think { padding: 4px 18px; }
+.think-body { margin-top: 6px; padding-left: 10px; border-left-width: 2px; border-left-style: solid; border-left-color: var(--border-strong); }
+
+.tool { margin: 2px 12px; border-radius: 12px; background-color: var(--surface); border-width: 1px; border-style: solid; border-color: var(--border); overflow: hidden; max-width: 820px; }
+.tool-head { display: flex; flex-direction: row; align-items: center; padding: 8px 10px; }
+.tool-head-pressed { background-color: var(--surface-pressed); }
+.tool-ic { width: 24px; height: 24px; border-radius: 7px; background-color: var(--surface-2); display: flex; align-items: center; justify-content: center; margin-right: 8px; }
+.tool-body { padding: 10px 12px 12px 12px; border-top-width: 1px; border-top-style: solid; border-top-color: var(--border); background-color: var(--code-bg); }
+
+.perm {
+  margin: 8px 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background-color: var(--surface);
+  border-width: 1.5px;
+  border-style: solid;
+  border-color: var(--warning);
+  max-width: 820px;
+}
+.perm-ic { width: 30px; height: 30px; border-radius: 9px; background-color: var(--warning-soft); display: flex; align-items: center; justify-content: center; margin-right: 10px; }
+.perm-detail { background-color: var(--code-bg); border-radius: 10px; padding: 10px 12px; }
+.perm-done { display: flex; flex-direction: row; align-items: center; margin: 2px 14px; padding: 6px 8px; }
+
+.evt { display: flex; flex-direction: row; align-items: center; padding: 10px 24px 6px 24px; }
+.evt-line { flex: 1; height: 1px; background-color: var(--border); }
+.evt-err, .evt-info { display: flex; flex-direction: row; align-items: center; margin: 6px 14px; padding: 10px 12px; border-radius: 12px; }
+.evt-err { background-color: var(--danger-soft); }
+.evt-info { background-color: var(--surface-2); }
+
+.working { display: flex; flex-direction: row; align-items: center; padding: 10px 20px; }
+.wdot { width: 7px; height: 7px; border-radius: 4px; background-color: var(--primary); margin-right: 4px; }
+
+.composer {
+  padding: 10px 12px 10px 12px;
+  background-color: var(--bg);
+  border-top-width: 1px;
+  border-top-style: solid;
+  border-top-color: var(--border);
+}
+.composer-box {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  background-color: var(--surface);
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--border-strong);
+  border-radius: 22px;
+  padding: 5px 5px 5px 16px;
+}
+.composer-input { flex: 1; font-size: 15px; line-height: 21px; color: var(--text); min-height: 34px; max-height: 180px; padding: 6px 0; }
+.send {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background-color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+}
+.send-off { background-color: var(--border-strong); }
+.send-stop { background-color: var(--text); }

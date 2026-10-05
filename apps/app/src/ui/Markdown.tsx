@@ -1,0 +1,101 @@
+import { useMemo } from '@lynx-js/react';
+
+import { copyText } from '../shared/host';
+import { C } from '../shared/theme';
+import { Icon } from './kit';
+import { type Inline, parseMarkdown } from './markdown-parse';
+
+function Inlines({ items }: { items: Inline[] }) {
+  return (
+    <>
+      {items.map((it, i) => {
+        switch (it.t) {
+          case 'bold':
+            return (
+              <text key={i} style={{ fontWeight: '700' }}>
+                {it.v}
+              </text>
+            );
+          case 'italic':
+            return (
+              <text key={i} style={{ fontStyle: 'italic' }}>
+                {it.v}
+              </text>
+            );
+          case 'code':
+            return (
+              <text key={i} className="md-inline-code">
+                {it.v}
+              </text>
+            );
+          case 'link':
+            return (
+              <text key={i} className="md-link">
+                {it.v}
+              </text>
+            );
+          default:
+            return <text key={i}>{it.v}</text>;
+        }
+      })}
+    </>
+  );
+}
+
+export function Markdown({ text, color }: { text: string; color?: string }) {
+  const blocks = useMemo(() => parseMarkdown(text), [text]);
+  const tint = color ? { color } : undefined;
+  return (
+    <view className="md">
+      {blocks.map((b, i) => {
+        switch (b.t) {
+          case 'p':
+            return (
+              <text key={i} className="t-body md-p" style={tint}>
+                <Inlines items={b.inl} />
+              </text>
+            );
+          case 'h':
+            return (
+              <text key={i} className={`md-h md-h${b.level}`} style={tint}>
+                <Inlines items={b.inl} />
+              </text>
+            );
+          case 'li':
+            return (
+              <view key={i} className="md-li" style={{ paddingLeft: `${b.depth * 16}px` }}>
+                <text className="t-body md-bullet">{b.ordered ? `${b.n}.` : '•'}</text>
+                <text className="t-body grow" style={tint}>
+                  <Inlines items={b.inl} />
+                </text>
+              </view>
+            );
+          case 'quote':
+            return (
+              <view key={i} className="md-quote">
+                <text className="t-body muted">
+                  <Inlines items={b.inl} />
+                </text>
+              </view>
+            );
+          case 'code':
+            return (
+              <view key={i} className="md-code">
+                <view className="md-code-head">
+                  <text className="t-caption grow">{b.lang || 'code'}</text>
+                  <view bindtap={() => copyText(b.v)}>
+                    <Icon name="copy" size={15} color={C['text-tertiary']} />
+                  </view>
+                </view>
+                <scroll-view scroll-orientation="horizontal" className="md-code-body">
+                  <text className="t-mono">{b.v}</text>
+                </scroll-view>
+              </view>
+            );
+          case 'hr':
+            return <view key={i} className="md-hr" />;
+        }
+      })}
+    </view>
+  );
+}
