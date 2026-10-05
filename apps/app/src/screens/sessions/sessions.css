@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(60, 50, 140, 0.35);
+  box-shadow: 0 8px 24px rgba(8, 60, 54, 0.35);
 }
 .fab-pressed { background-color: var(--primary-pressed); }
 .new-chat {

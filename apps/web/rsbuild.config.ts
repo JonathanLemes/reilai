@@ -16,7 +16,7 @@ export default defineConfig({
     favicon: './public/icons/favicon.svg',
     meta: {
       viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content',
-      'theme-color': '#F5F5F8',
+      'theme-color': '#F4F6F6',
       description: 'Claude Code and Codex, anywhere.',
       'apple-mobile-web-app-capable': 'yes',
       'mobile-web-app-capable': 'yes',

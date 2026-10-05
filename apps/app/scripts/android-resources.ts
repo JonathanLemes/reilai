@@ -3,13 +3,13 @@
  * hard-codes a color or redraws an icon:
  *  - assets/theme.json            palette (light/dark)
  *  - drawable/ic_tab_*.xml        Solar tab icons as vector drawables
- *  - mipmap-*                     adaptive launcher icon (logo on the brand gradient)
+ *  - mipmap-*                     adaptive launcher icon (signal mark on the ink tile)
  * Runs before every Gradle build (preBuild → generateAndroidResources).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { LOGO_SHAPES, PALETTES, SOLAR_ICONS, type SolarIconName } from '@reilai/brand';
+import { appIconMarkup, BRAND, PALETTES, SOLAR_ICONS, type SolarIconName } from '@reilai/brand';
 import sharp from 'sharp';
 
 const res = new URL('../android/app/src/main/res/', import.meta.url).pathname;
@@ -50,17 +50,15 @@ for (const [file, icon] of [
 
 // adaptive launcher icon: 108dp canvas, logo inside the 66dp safe zone
 const densities = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 } as const;
-const fg = (px: number) => {
-  const scale = (px * 0.42) / 886;
-  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}">
-<g transform="translate(${(px - 770 * scale) / 2} ${(px - 886 * scale) / 2}) scale(${scale})" fill="#fff" stroke="#fff" stroke-width="3" stroke-linejoin="round">${LOGO_SHAPES}</g></svg>`);
-};
-const legacy = new URL('../../../packages/brand/icon.svg', import.meta.url).pathname;
+// foreground: the mark in signal teal inside the safe zone; monochrome: the same mark in white
+const fg = (px: number, color: string = BRAND.signal) => Buffer.from(appIconMarkup(px, { bg: 'none', fg: color, mark: 0.46 }));
+const legacy = (px: number) => Buffer.from(appIconMarkup(px, { radius: 0.18 }));
 for (const [d, k] of Object.entries(densities)) {
   const dir = join(res, `mipmap-${d}`);
   mkdirSync(dir, { recursive: true });
   await sharp(fg(Math.round(108 * k))).png().toFile(join(dir, 'ic_launcher_foreground.png'));
-  await sharp(legacy).resize(Math.round(48 * k)).png().toFile(join(dir, 'ic_launcher.png'));
+  await sharp(fg(Math.round(108 * k), '#FFFFFF')).png().toFile(join(dir, 'ic_launcher_monochrome.png'));
+  await sharp(legacy(Math.round(48 * k))).png().toFile(join(dir, 'ic_launcher.png'));
 }
 mkdirSync(join(res, 'mipmap-anydpi-v26'), { recursive: true });
 writeFileSync(
@@ -69,7 +67,7 @@ writeFileSync(
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
-    <monochrome android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
 </adaptive-icon>
 `,
 );
@@ -77,7 +75,7 @@ writeFileSync(
   join(res, 'drawable', 'launcher_background.xml'),
   `<?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient android:angle="315" android:startColor="#7467C7" android:endColor="#4A3F94" />
+    <solid android:color="${BRAND.ink}" />
 </shape>
 `,
 );

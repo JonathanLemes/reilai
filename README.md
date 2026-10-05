@@ -181,4 +181,4 @@ cd apps/web && bun run dev          # web shell dev server (proxies to :7420)
 
 ## License
 
-MIT, same as Happy. See [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).

@@ -15,8 +15,8 @@ export const c = {
   magenta: wrap(35, 39),
   cyan: wrap(36, 39),
   gray: wrap(90, 39),
-  /** brand indigo (truecolor) */
-  brand: (s: string) => (tty ? `\x1b[38;2;140;128;230m${s}\x1b[39m` : s),
+  /** brand signal teal (truecolor) */
+  brand: (s: string) => (tty ? `\x1b[38;2;45;212;191m${s}\x1b[39m` : s),
 };
 
 let lang: Language = resolveLanguage('system', process.env.LC_ALL || process.env.LANG);

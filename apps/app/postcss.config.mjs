@@ -1,5 +1,5 @@
 /**
- * `var(--primary)` → `var(--primary, #5E52A7)`: the light palette is the fallback,
+ * `var(--primary)` → `var(--primary, #0B7F71)`: the light palette is the fallback,
  * the real values come from <ThemeRoot> at runtime. Unknown tokens break the build.
  */
 import { execFileSync } from 'node:child_process';

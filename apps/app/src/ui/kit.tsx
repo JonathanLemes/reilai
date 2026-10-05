@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from '@lynx-js/react';
-import { iconMarkup, logoMarkup, type SolarIconName } from '@reilai/brand';
+import { iconMarkup, LOGO_ASPECT, logoMarkup, type SolarIconName } from '@reilai/brand';
 
 import { C } from '../shared/theme';
 
@@ -18,7 +18,7 @@ export function Icon({ name, size = 20, color }: { name: SolarIconName; size?: n
 }
 
 export function Logo({ size = 28, color }: { size?: number; color?: string }) {
-  return <svg content={logoMarkup(color ?? C.primary)} style={{ width: `${size * (770 / 886)}px`, height: `${size}px`, flexShrink: 0 }} />;
+  return <svg content={logoMarkup(color ?? C.primary)} style={{ width: `${size * LOGO_ASPECT}px`, height: `${size}px`, flexShrink: 0 }} />;
 }
 
 /** Touchable area with a pressed state. */
