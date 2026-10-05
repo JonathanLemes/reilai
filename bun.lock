@@ -28,6 +28,22 @@
         "@types/qrcode-terminal": "^0.12.2",
       },
     },
+    "apps/relay": {
+      "name": "@reilai/relay",
+      "version": "0.1.0",
+      "dependencies": {
+        "@reilai/protocol": "workspace:*",
+      },
+    },
+    "apps/tunnel": {
+      "name": "@reilai/tunnel",
+      "version": "0.1.0",
+      "dependencies": {
+        "@reilai/cli": "workspace:*",
+        "@reilai/crypto": "workspace:*",
+        "@reilai/protocol": "workspace:*",
+      },
+    },
     "packages/brand": {
       "name": "@reilai/brand",
       "version": "0.1.0",
@@ -106,6 +122,10 @@
     "@reilai/i18n": ["@reilai/i18n@workspace:packages/i18n"],
 
     "@reilai/protocol": ["@reilai/protocol@workspace:packages/protocol"],
+
+    "@reilai/relay": ["@reilai/relay@workspace:apps/relay"],
+
+    "@reilai/tunnel": ["@reilai/tunnel@workspace:apps/tunnel"],
 
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 

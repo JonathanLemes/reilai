@@ -1,0 +1,8 @@
+{
+  "name": "@reilai/relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "bun src/server.ts", "check-types": "tsc --noEmit -p .", "test": "bun test --pass-with-no-tests" },
+  "dependencies": { "@reilai/protocol": "workspace:*" }
+}

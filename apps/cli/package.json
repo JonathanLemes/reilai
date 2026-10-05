@@ -19,5 +19,8 @@
   },
   "devDependencies": {
     "@types/qrcode-terminal": "^0.12.2"
+  },
+  "exports": {
+    "./config": "./src/config.ts"
   }
 }
