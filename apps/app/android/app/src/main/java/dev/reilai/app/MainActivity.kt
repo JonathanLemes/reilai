@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private var currentTab = "sessions"
     private var gate: LynxScreen? = null
     private var modal: BottomSheetDialog? = null
+    private var tabsReady = false
 
     private val backCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() = pop()
@@ -130,12 +131,7 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             destroyAll()
             tabBar.isVisible = true
-            for (tab in tabs) {
-                val params: Map<String, Any?> = if (tab == "new") mapOf("asTab" to true) else emptyMap()
-                val screen = createScreen(tab, params, false)
-                stacks[tab] = mutableListOf(screen)
-                content.addView(screen.view, matchParent())
-            }
+            tabsReady = true
             selectTab("sessions")
         }
     }
@@ -144,6 +140,7 @@ class MainActivity : AppCompatActivity() {
         modal?.dismiss()
         modal = null
         gate = null
+        tabsReady = false
         allViews.forEach { (it.parent as? ViewGroup)?.removeView(it); it.destroy() }
         allViews.clear()
         stacks.clear()
@@ -157,7 +154,14 @@ class MainActivity : AppCompatActivity() {
 
     fun selectTab(tab: String) {
         runOnUiThread {
-            if (tab !in tabs || stacks.isEmpty()) return@runOnUiThread
+            if (tab !in tabs || !tabsReady) return@runOnUiThread
+            // tabs are created on first visit: a lighter start (one Lynx runtime instead of three)
+            if (stacks[tab] == null) {
+                val params: Map<String, Any?> = if (tab == "new") mapOf("asTab" to true) else emptyMap()
+                val screen = createScreen(tab, params, false)
+                stacks[tab] = mutableListOf(screen)
+                content.addView(screen.view, matchParent())
+            }
             currentTab = tab
             if (tabBar.selectedItemId != idFor(tab)) tabBar.selectedItemId = idFor(tab)
             for ((name, stack) in stacks) stack.forEachIndexed { i, s -> s.view.isVisible = name == tab && i == stack.lastIndex }
@@ -232,7 +236,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateChrome() {
         val stack = stacks[currentTab]
         backCallback.isEnabled = (stack?.size ?: 0) > 1
-        tabBar.isVisible = stacks.isNotEmpty() && stack?.lastOrNull()?.hidesTabs != true
+        tabBar.isVisible = tabsReady && stack?.lastOrNull()?.hidesTabs != true
     }
 
     // ------------------------------------------------------------------ events & theme
