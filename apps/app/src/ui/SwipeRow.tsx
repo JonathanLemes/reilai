@@ -105,7 +105,7 @@ export function SwipeRow({
     >
       <view
         className="swipe-action"
-        style={{ backgroundColor: actionColor ?? C.warning }}
+        style={{ backgroundColor: actionColor ?? C.danger }}
         bindtap={() => {
           void runOnMainThread(close)();
           setOpen(false);

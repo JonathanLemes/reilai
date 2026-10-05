@@ -24,6 +24,28 @@ export function Logo({ size = 28, color }: { size?: number; color?: string }) {
 /** Touchable area with a pressed state. */
 const LONG_PRESS_MS = 480;
 
+/**
+ * Who owns the touch in progress. A tap is ignored when the touch started on some
+ * other element, e.g. the finger that long-pressed a row and lifts over the menu it
+ * opened. Mouse clicks produce no touch events on the web, so they are never blocked.
+ */
+let gestureOwner: symbol | null = null;
+
+function claimGesture(me: symbol) {
+  if (!gestureOwner) gestureOwner = me;
+}
+
+function releaseGesture(me: symbol) {
+  // the tap event comes right after touchend: release a bit later
+  setTimeout(() => {
+    if (gestureOwner === me) gestureOwner = null;
+  }, 80);
+}
+
+function ownsTap(me: symbol) {
+  return !gestureOwner || gestureOwner === me;
+}
+
 /** Touchable area with a pressed state and an optional long press (own timer: same on web and native). */
 export function Pressable({
   onTap,
@@ -44,6 +66,8 @@ export function Pressable({
 }) {
   const [pressed, setPressed] = useState(false);
   const longPressed = useRef(false);
+  const me = useRef(Symbol('pressable')).current;
+  const moved = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const origin = useRef({ x: 0, y: 0 });
 
@@ -61,6 +85,9 @@ export function Pressable({
       style={style}
       bindtouchstart={(e: Touch) => {
         longPressed.current = false;
+        moved.current = false;
+        gestureOwner = null;
+        claimGesture(me);
         if (disabled) return;
         setPressed(true);
         origin.current = point(e);
@@ -79,18 +106,21 @@ export function Pressable({
         if (Math.abs(p.x - origin.current.x) > 10 || Math.abs(p.y - origin.current.y) > 10) {
           cancel();
           setPressed(false);
+          moved.current = true;
         }
       }}
       bindtouchend={() => {
         cancel();
         setPressed(false);
+        releaseGesture(me);
       }}
       bindtouchcancel={() => {
         cancel();
         setPressed(false);
+        releaseGesture(me);
       }}
       bindtap={() => {
-        if (longPressed.current) return;
+        if (longPressed.current || moved.current || !ownsTap(me)) return;
         if (!disabled) onTap?.();
       }}
     >
@@ -337,14 +367,17 @@ export function ActionSheet({
   title?: string;
   actions: { label: string; subtitle?: string; icon?: SolarIconName; danger?: boolean; onTap: () => void }[];
 }) {
-  // the finger that long-pressed lifts right after the sheet opens: ignore that tap
-  const openedAt = useRef(0);
-  useEffect(() => {
-    if (open) openedAt.current = Date.now();
-  }, [open]);
+  // Only a touch that starts on the scrim closes it: the finger that long-pressed
+  // the row (and may still be down, or lift over the sheet) never does.
+  const me = useRef(Symbol('scrim')).current;
   if (!open) return null;
   return (
-    <view className="scrim" bindtap={() => Date.now() - openedAt.current > 400 && onClose()}>
+    <view
+      className="scrim"
+      bindtouchstart={() => claimGesture(me)}
+      bindtouchend={() => releaseGesture(me)}
+      bindtap={() => ownsTap(me) && onClose()}
+    >
       <view className="sheet" catchtap={() => {}}>
         <view className="sheet-handle" />
         {!!title && (
@@ -434,6 +467,15 @@ export function PromptDialog({
   onClose: () => void;
 }) {
   const [value, setValue] = useState(initial);
+  useEffect(() => {
+    if (!open) return;
+    setValue(initial);
+    // default-value is not applied by every host: set the text explicitly
+    const timer = setTimeout(() => {
+      lynx.createSelectorQuery().select('#prompt-dialog-input').invoke({ method: 'setValue', params: { value: initial } }).exec();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [open, initial]);
   if (!open) return null;
   return (
     <view className="scrim scrim-center" bindtap={onClose}>
@@ -443,6 +485,7 @@ export function PromptDialog({
         </text>
         <view className="field" style={{ marginBottom: '18px' }}>
           <input
+            id="prompt-dialog-input"
             className="field-input"
             default-value={initial}
             bindinput={(e: { detail: { value: string } }) => setValue(e.detail.value)}
