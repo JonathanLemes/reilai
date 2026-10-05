@@ -3,7 +3,7 @@ import { relativeTime } from '@reilai/i18n';
 import { projectName, type Session } from '@reilai/protocol';
 
 import { useSessions } from '../../shared/data';
-import { openSession, present, rpc } from '../../shared/host';
+import { openSession, pop, present, rpc, selectTab } from '../../shared/host';
 import { useConnection, useLanguage, useLayout, useTick } from '../../shared/hooks';
 import { C } from '../../shared/theme';
 import { AgentAvatar, StatusBadge } from '../../ui/agent';
@@ -88,10 +88,10 @@ function SessionRow({
           <StatusBadge session={s} t={t} />
           {onArchive && (
             <>
-              <view className="srow-act" catchtap={onArchive}>
+              <view className="srow-act hov" catchtap={onArchive}>
                 <Icon name={s.archived ? 'history' : 'archive'} size={15} color={C['text-tertiary']} />
               </view>
-              <view className="srow-act" catchtap={onMenu}>
+              <view className="srow-act hov" catchtap={onMenu}>
                 <Icon name="more" size={15} color={C['text-tertiary']} />
               </view>
             </>
@@ -134,6 +134,14 @@ export function Sessions() {
   const embedded = init.embedded === true;
 
   const newSession = () => present('new', {});
+  // desktop with a conversation open: the composer gives way to "New chat",
+  // which closes the conversation and focuses the composer again
+  const [focusComposer, setFocusComposer] = useState(false);
+  const newChat = () => {
+    setFocusComposer(true);
+    pop();
+    selectTab('sessions');
+  };
 
   return (
     <view className="root">
@@ -240,7 +248,18 @@ export function Sessions() {
         </list>
       )}
 
-      {!archived && <HomeComposer t={t} lang={lang} safeBottom={safeBottom} onError={flash} />}
+      {embedded && selected ? (
+        <view style={{ padding: `8px 12px ${10 + safeBottom}px 12px` }}>
+          <Pressable className="new-chat" pressedClassName="new-chat-pressed" onTap={newChat}>
+            <Icon name="newChat" size={19} color={C.primary} />
+            <text className="t-body bold" style={{ marginLeft: '8px', color: C.primary }}>
+              {t('sessions.newChat')}
+            </text>
+          </Pressable>
+        </view>
+      ) : (
+        !archived && <HomeComposer t={t} lang={lang} safeBottom={safeBottom} onError={flash} autoFocus={focusComposer} />
+      )}
 
       {actions.elements}
       <Toast text={toast} />

@@ -99,10 +99,43 @@ lynx-view {
   background: var(--danger);
 }
 .sidebar {
-  width: 360px;
   flex-shrink: 0;
   position: relative;
   border-right: 1px solid var(--border);
+}
+/* drag handle on the sidebar edge; the line shows on hover and while dragging */
+.resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -5px;
+  width: 9px;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+.resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--primary);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.resizer:hover::after,
+.resizer.on::after {
+  opacity: 0.6;
+}
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+body.resizing lynx-view {
+  pointer-events: none;
 }
 .main {
   flex: 1;

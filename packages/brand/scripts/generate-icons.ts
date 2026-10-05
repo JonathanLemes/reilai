@@ -28,6 +28,7 @@ const WANTED: Record<string, string> = {
   file: 'document-text-bold',
   edit: 'pen-bold',
   rename: 'pen-new-square-bold',
+  newChat: 'pen-new-square-linear',
   globe: 'global-bold',
   checklist: 'checklist-minimalistic-bold',
   shieldCheck: 'shield-check-bold',

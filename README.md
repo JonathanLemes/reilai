@@ -8,19 +8,7 @@
 Start, follow and approve your coding agents from the terminal, the browser or your phone.<br/>
 Every conversation is shared and live on all of them.</p>
 
-<p align="center">
-  <img src="docs/screenshots/desktop-light.png" width="860" alt="ReilAI on desktop" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/mobile-dark.png" width="260" alt="ReilAI mobile web, dark" />
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/android-pair.png" width="260" alt="ReilAI native Android app, pairing" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/desktop-dark-new.png" width="860" alt="New session in dark mode" />
-</p>
+<p align="center"><img src="docs/screenshots/showcase.png" alt="ReilAI on the desktop and on a phone" width="900"></p>
 
 ## Why
 
@@ -58,8 +46,9 @@ self-hosted remote control for **Claude Code** and **Codex**, inspired by
 - Light on memory: idle agents stop after 15 minutes (`REILAI_IDLE_STOP_MINUTES`) and stopped
   sessions are shown faded. **Resume** (or just sending a message) restarts the agent with its
   previous context and unarchives the session.
-- Light, dark or system theme. Desktop layout with a sessions sidebar, mobile layout with a
-  native-feeling tab bar. Installable as a PWA.
+- Light, dark or system theme. Desktop layout with a sessions sidebar you can resize by dragging
+  its edge (remembered per device, double click to reset) and a **New chat** button while a
+  conversation is open; mobile layout with a native-feeling tab bar. Installable as a PWA.
 - Native Android app built with [Lynx](https://lynxjs.org): native bottom navigation, the
   same screens as the web, pairing by QR code.
 

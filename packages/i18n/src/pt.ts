@@ -84,6 +84,7 @@ export const pt: Dictionary = {
   'sessions.emptyTitle': 'Nenhuma sessão ainda',
   'sessions.emptyBody': 'Inicie o Claude Code ou o Codex em qualquer pasta do seu computador e acompanhe por aqui.',
   'sessions.start': 'Iniciar uma sessão',
+  'sessions.newChat': 'Novo chat',
   'sessions.noResults': 'Nenhuma sessão com “{q}”',
   'sessions.archived': 'Arquivadas',
   'sessions.showArchived': 'Mostrar arquivadas',

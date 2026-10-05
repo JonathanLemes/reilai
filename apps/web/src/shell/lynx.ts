@@ -220,6 +220,14 @@ function handleCall(name: string, data: Data, nav: Navigator | undefined): unkno
 }
 
 /** Mounts one Lynx screen (`<screen>.web.bundle`) in a container. */
+/**
+ * Mouse affordances for the Lynx screens (Lynx CSS has no :hover nor cursor).
+ * Interactive elements carry the `hov` class (Pressable adds it); touch screens skip it.
+ */
+const POINTER_RULES = [
+  '@media (hover: hover) and (pointer: fine) { .hov { cursor: pointer; transition: box-shadow 120ms ease; } .hov:hover { box-shadow: inset 0 0 0 999px var(--hover); } }',
+];
+
 export function createLynx(
   container: HTMLElement,
   screen: string,
@@ -233,6 +241,7 @@ export function createLynx(
   view.browserConfig = { pixelRatio: dpr, pixelWidth: Math.max(rect.width, 320) * dpr, pixelHeight: Math.max(rect.height, 480) * dpr };
   view.initData = screenData(initData, layout);
   view.nativeModulesMap = { ReilHost: REIL_HOST_URL };
+  view.injectStyleRules = POINTER_RULES;
   view.onNativeModulesCall = (name, data, moduleName) => {
     if (moduleName !== 'ReilHost') return undefined;
     return handleCall(name, (data ?? {}) as Data, nav());

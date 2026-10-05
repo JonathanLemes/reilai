@@ -151,7 +151,7 @@ export function Settings() {
           <text className="t-sub" style={{ marginTop: '8px', textAlign: 'center' }}>
             {t('settings.aboutBody')}
           </text>
-          <view className="row" style={{ marginTop: '12px' }} bindtap={() => NativeModules.ReilHost?.openURL?.('https://github.com/JonathanLemes/reilai')}>
+          <view className="row hov" style={{ marginTop: '12px' }} bindtap={() => NativeModules.ReilHost?.openURL?.('https://github.com/JonathanLemes/reilai')}>
             <Icon name="link" size={15} color={C.primary} />
             <text className="t-callout accent" style={{ marginLeft: '6px' }}>
               github.com/JonathanLemes/reilai

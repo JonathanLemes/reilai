@@ -10,6 +10,8 @@ export interface Palette {
   surface: string;
   'surface-2': string;
   'surface-pressed': string;
+  /** Translucent tint laid over anything under the mouse (web). */
+  hover: string;
   border: string;
   'border-strong': string;
   text: string;
@@ -40,6 +42,7 @@ export const PALETTES: Record<Mode, Palette> = {
     surface: '#FFFFFF',
     'surface-2': '#F0F0F4',
     'surface-pressed': '#E9E9EF',
+    hover: 'rgba(24, 23, 28, 0.05)',
     border: '#E7E7EC',
     'border-strong': '#D4D4DC',
     text: '#18171C',
@@ -68,6 +71,7 @@ export const PALETTES: Record<Mode, Palette> = {
     surface: '#1A191E',
     'surface-2': '#232229',
     'surface-pressed': '#2B2A31',
+    hover: 'rgba(255, 255, 255, 0.06)',
     border: '#2A2930',
     'border-strong': '#3A3942',
     text: '#F3F2F7',

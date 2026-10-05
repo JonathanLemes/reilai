@@ -33,4 +33,14 @@
   box-shadow: 0 8px 24px rgba(60, 50, 140, 0.35);
 }
 .fab-pressed { background-color: var(--primary-pressed); }
+.new-chat {
+  height: 48px;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-soft);
+}
+.new-chat-pressed { background-color: var(--surface-pressed); }
 .srow-act { width: 28px; height: 24px; display: flex; align-items: center; justify-content: flex-end; margin-left: 6px; }

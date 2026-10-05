@@ -34,7 +34,7 @@ function Inlines({ items, onOpenPath }: { items: Inline[]; onOpenPath?: (path: s
             );
           case 'code':
             return onOpenPath && looksLikePath(it.v) ? (
-              <text key={i} className="md-inline-code md-path" bindtap={() => onOpenPath(it.v)}>
+              <text key={i} className="md-inline-code md-path hov" bindtap={() => onOpenPath(it.v)}>
                 {it.v}
               </text>
             ) : (
@@ -97,7 +97,7 @@ export function Markdown({ text, color, onOpenPath }: { text: string; color?: st
               <view key={i} className="md-code">
                 <view className="md-code-head">
                   <text className="t-caption grow">{b.lang || 'code'}</text>
-                  <view bindtap={() => copyText(b.v)}>
+                  <view className="hov md-copy" bindtap={() => copyText(b.v)}>
                     <Icon name="copy" size={15} color={C['text-tertiary']} />
                   </view>
                 </view>

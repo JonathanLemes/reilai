@@ -75,7 +75,7 @@ export function Thinking({ m, t }: { m: Message; t: T }) {
   const [open, setOpen] = useState(false);
   return (
     <view className="think">
-      <view className="row" bindtap={() => setOpen((o) => !o)}>
+      <view className="row hov" style={{ borderRadius: '8px' }} bindtap={() => setOpen((o) => !o)}>
         <Icon name="bulb" size={15} color={C['text-tertiary']} />
         <text className={`t-sub${m.streaming ? ' pulse' : ''}`} style={{ marginLeft: '6px' }}>
           {m.streaming ? t('chat.thinking') : t('chat.thought')}

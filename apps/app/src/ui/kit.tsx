@@ -81,7 +81,7 @@ export function Pressable({
 
   return (
     <view
-      className={`${className ?? ''}${pressed && pressedClassName ? ` ${pressedClassName}` : ''}`}
+      className={`${className ?? ''}${onTap && !disabled ? ' hov' : ''}${pressed && pressedClassName ? ` ${pressedClassName}` : ''}`}
       style={style}
       bindtouchstart={(e: Touch) => {
         longPressed.current = false;
@@ -277,7 +277,7 @@ export function Segmented<T extends string>({
         return (
           <view
             key={o.value}
-            className={`seg-item${on ? ' seg-item-on' : ''}`}
+            className={`seg-item${on ? ' seg-item-on' : o.disabled ? '' : ' hov'}`}
             style={o.disabled ? { opacity: 0.4 } : undefined}
             bindtap={() => !o.disabled && onChange(o.value)}
           >

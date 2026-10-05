@@ -146,7 +146,7 @@ export function Chat() {
         title={session ? session.title || t('sessions.untitled') : ''}
         subtitle={
           session && (
-            <view className="row" style={{ marginTop: '1px' }} bindtap={() => setModes(true)}>
+            <view className="row hov" style={{ marginTop: '1px', borderRadius: '6px' }} bindtap={() => setModes(true)}>
               <StatusDot status={session.status} />
               <text className="t-caption" style={{ marginLeft: '5px' }} text-maxline="1">
                 {`${agentName} · ${projectName(session.cwd)} · ${t(`status.${session.status}`)}`}

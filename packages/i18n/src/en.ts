@@ -94,6 +94,7 @@ export const en = {
   'sessions.emptyTitle': 'No sessions yet',
   'sessions.emptyBody': 'Start Claude Code or Codex in any folder of your computer and follow it from here.',
   'sessions.start': 'Start a session',
+  'sessions.newChat': 'New chat',
   'sessions.noResults': 'No sessions match “{q}”',
   'sessions.archived': 'Archived',
   'sessions.showArchived': 'Show archived',

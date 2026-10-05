@@ -24,7 +24,19 @@ function input(method: string, params?: Record<string, unknown>) {
  * raises the panel with the computer, folder and agent rows; mode and model live in
  * the field itself. Sending starts the session and opens it.
  */
-export function HomeComposer({ t, lang, safeBottom, onError }: { t: T; lang: 'en' | 'pt'; safeBottom: number; onError: (m: string) => void }) {
+export function HomeComposer({
+  t,
+  lang,
+  safeBottom,
+  onError,
+  autoFocus,
+}: {
+  t: T;
+  lang: 'en' | 'pt';
+  safeBottom: number;
+  onError: (m: string) => void;
+  autoFocus?: boolean;
+}) {
   const hello = useHello();
   const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState('');
@@ -32,7 +44,7 @@ export function HomeComposer({ t, lang, safeBottom, onError }: { t: T; lang: 'en
   const [mode, setMode] = useState<PermissionMode>('ask');
   const [model, setModel] = useState<string | null>(null);
   const [cwd, setCwd] = useState('');
-  const [sheet, setSheet] = useState<'folder' | 'agent' | 'mode' | 'model' | null>(null);
+  const [sheet, setSheet] = useState<'folder' | 'mode' | 'model' | null>(null);
   const [sending, setSending] = useState(false);
   const models = useModels(agent);
   const currentModel = findModel(models, model);
@@ -46,6 +58,7 @@ export function HomeComposer({ t, lang, safeBottom, onError }: { t: T; lang: 'en
         .then((list) => list[0] && setCwd((c) => c || list[0]!.path))
         .catch(() => {});
     });
+    if (autoFocus) setTimeout(() => input('focus'), 50);
   }, []);
 
   const collapse = () => {
@@ -81,6 +94,18 @@ export function HomeComposer({ t, lang, safeBottom, onError }: { t: T; lang: 'en
   };
 
   const agentInstalled = (a: AgentKind) => hello?.agents.find((x) => x.agent === a)?.installed !== false;
+  const pickAgent = (a: AgentKind) => {
+    if (a === agent) return;
+    haptic('light');
+    setAgent(a);
+    setModel(null);
+    kvSet('new.agent', a);
+  };
+  // closes the keyboard first, so the sheet does not move under the finger
+  const openSheet = (s: 'folder' | 'mode' | 'model') => {
+    input('blur');
+    setSheet(s);
+  };
 
   return (
     <>
@@ -94,20 +119,30 @@ export function HomeComposer({ t, lang, safeBottom, onError }: { t: T; lang: 'en
                 {hello?.machine.name ?? '…'}
               </text>
             </view>
-            <Pressable className="hc-row" pressedClassName="hc-row-pressed" onTap={() => setSheet('folder')}>
+            <Pressable className="hc-row" pressedClassName="hc-row-pressed" onTap={() => openSheet('folder')}>
               <Icon name="folder" size={20} color={C.text} />
               <text className="t-body grow" text-maxline="1" style={{ marginLeft: '14px' }}>
                 {cwd ? cwd.replace(hello?.machine.home ?? '\u0000', '~') : t('composer.pickFolder')}
               </text>
               <Icon name="chevronRight" size={16} color={C['text-tertiary']} />
             </Pressable>
-            <Pressable className="hc-row" pressedClassName="hc-row-pressed" onTap={() => setSheet('agent')}>
-              <AgentAvatar agent={agent} size={22} />
-              <text className="t-body grow" style={{ marginLeft: '12px' }}>
-                {AGENT_NAME[agent]}
-              </text>
-              <Icon name="chevronRight" size={16} color={C['text-tertiary']} />
-            </Pressable>
+            <view className="hc-row" style={{ paddingTop: '6px', paddingBottom: '6px' }}>
+              {(['claude', 'codex'] as AgentKind[]).map((a) => (
+                <Pressable
+                  key={a}
+                  className={`hc-agent${agent === a ? ' hc-agent-on' : ''}`}
+                  pressedClassName="hc-row-pressed"
+                  disabled={!agentInstalled(a)}
+                  onTap={() => pickAgent(a)}
+                  style={agentInstalled(a) ? undefined : { opacity: 0.45 }}
+                >
+                  <AgentAvatar agent={a} size={22} />
+                  <text className="t-body" text-maxline="1" style={{ marginLeft: '10px', fontWeight: agent === a ? '600' : '400' }}>
+                    {AGENT_NAME[a]}
+                  </text>
+                </Pressable>
+              ))}
+            </view>
           </view>
         )}
         <view className={`hc-box${expanded ? ' hc-box-on' : ''}`}>
@@ -120,13 +155,13 @@ export function HomeComposer({ t, lang, safeBottom, onError }: { t: T; lang: 'en
             bindinput={(e: { detail: { value: string } }) => setText(e.detail.value)}
           />
           <view className="row" style={{ marginTop: '6px' }}>
-            <Pressable className="hc-chip" pressedClassName="hc-chip-pressed" onTap={() => setSheet('mode')} style={{ flexShrink: 0 }}>
+            <Pressable className="hc-chip" pressedClassName="hc-chip-pressed" onTap={() => openSheet('mode')} style={{ flexShrink: 0 }}>
               <Icon name={MODE_ICON[mode]} size={15} color={mode === 'yolo' ? C.danger : C.primary} />
               <text className="t-callout" text-maxline="1" style={{ marginLeft: '6px' }}>
                 {t(`mode.${mode}`)}
               </text>
             </Pressable>
-            <Pressable className="hc-chip" pressedClassName="hc-chip-pressed" onTap={() => setSheet('model')} style={{ flexShrink: 1 }}>
+            <Pressable className="hc-chip" pressedClassName="hc-chip-pressed" onTap={() => openSheet('model')} style={{ flexShrink: 1 }}>
               <Icon name="cpu" size={15} color={C.primary} />
               <text className="t-callout" text-maxline="1" style={{ marginLeft: '6px' }}>
                 {currentModel ? translateModelText(lang, shortModelLabel(currentModel)) : t('model.default')}
@@ -172,21 +207,6 @@ export function HomeComposer({ t, lang, safeBottom, onError }: { t: T; lang: 'en
           </view>
         </view>
       )}
-      <ActionSheet
-        open={sheet === 'agent'}
-        onClose={() => setSheet(null)}
-        title={t('new.agent')}
-        actions={(['claude', 'codex'] as AgentKind[]).map((a) => ({
-          label: `${AGENT_NAME[a]}${agent === a ? '  ✓' : ''}`,
-          subtitle: agentInstalled(a) ? undefined : t('agent.notInstalled'),
-          icon: 'robot' as const,
-          onTap: () => {
-            if (!agentInstalled(a) || a === agent) return;
-            setAgent(a);
-            setModel(null);
-          },
-        }))}
-      />
       <ActionSheet
         open={sheet === 'mode'}
         onClose={() => setSheet(null)}

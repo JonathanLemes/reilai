@@ -1,6 +1,6 @@
 import { iconMarkup, logoMarkup, PALETTES, type SolarIconName } from '@reilai/brand';
 import { type Language, type MessageKey, translate } from '@reilai/i18n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Connection, ConnState } from './connection';
 import { broadcast, currentLang, type Data, type Navigator, onLangChange, onThemeChange, themeState } from './lynx';
@@ -58,6 +58,86 @@ function useKeyboardOpen(enabled: boolean) {
   return open;
 }
 
+const SIDEBAR_KEY = 'reilai:sidebar-width';
+const SIDEBAR_MIN = 280;
+const SIDEBAR_MAX = 560;
+/** Room the conversation always keeps next to the sidebar (rail included). */
+const MAIN_MIN = 460 + 68;
+
+function clampSidebar(width: number) {
+  const max = Math.min(SIDEBAR_MAX, window.innerWidth - MAIN_MIN);
+  return Math.round(Math.max(SIDEBAR_MIN, Math.min(max, width)));
+}
+
+/** Desktop sidebar width: dragged by the divider, remembered on this device. */
+function useSidebarWidth() {
+  const [width, setWidth] = useState(() => {
+    let saved = Number.NaN;
+    try {
+      saved = Number(localStorage.getItem(SIDEBAR_KEY));
+    } catch {
+      // private mode: default width
+    }
+    return clampSidebar(Number.isFinite(saved) && saved > 0 ? saved : 360);
+  });
+  useEffect(() => {
+    const onResize = () => setWidth((w) => clampSidebar(w));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const save = useCallback((w: number) => {
+    try {
+      localStorage.setItem(SIDEBAR_KEY, String(w));
+    } catch {
+      // not persisted
+    }
+  }, []);
+  return [width, setWidth, save] as const;
+}
+
+function Resizer({ width, onChange, onDone }: { width: number; onChange: (w: number) => void; onDone: (w: number) => void }) {
+  const [dragging, setDragging] = useState(false);
+  const start = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const x0 = e.clientX;
+    let last = width;
+    setDragging(true);
+    document.body.classList.add('resizing');
+    const move = (ev: PointerEvent) => {
+      last = clampSidebar(width + ev.clientX - x0);
+      onChange(last);
+    };
+    const end = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', end);
+      el.removeEventListener('pointercancel', end);
+      setDragging(false);
+      document.body.classList.remove('resizing');
+      onDone(last);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  };
+  const reset = () => {
+    const w = clampSidebar(360);
+    onChange(w);
+    onDone(w);
+  };
+  return (
+    <div
+      className={`resizer${dragging ? ' on' : ''}`}
+      role="separator"
+      aria-orientation="vertical"
+      onPointerDown={start}
+      onDoubleClick={reset}
+    />
+  );
+}
+
 function useLang(): Language {
   const [lang, setLang] = useState(currentLang());
   useEffect(() => onLangChange(setLang), []);
@@ -101,6 +181,7 @@ export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void
   const [modal, setModal] = useState<{ screen: string; params: Data; wide?: boolean } | null>(null);
   const [state, setState] = useState<ConnState>(conn.state);
   const [keySeq, setKeySeq] = useState(10);
+  const [sidebarWidth, setSidebarWidth, saveSidebarWidth] = useSidebarWidth();
 
   useEffect(() => conn.onState(setState), [conn]);
 
@@ -198,8 +279,9 @@ export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void
           <div className="grow" />
           {connDot}
         </nav>
-        <aside className="sidebar">
+        <aside className="sidebar" style={{ width: sidebarWidth }}>
           <LynxView screen="sessions" data={{ embedded: true, selectedId: selected ?? '' }} layout={layout} nav={nav} />
+          <Resizer width={sidebarWidth} onChange={setSidebarWidth} onDone={saveSidebarWidth} />
         </aside>
         <main className="main">
           {tab === 'settings' ? (
