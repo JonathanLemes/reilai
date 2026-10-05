@@ -1,7 +1,7 @@
 import { safeEqual } from '@reilai/crypto';
 import { type ClientFrame, RpcError, type ServerEventName, type ServerEvents, type ServerFrame } from '@reilai/protocol';
 
-import { type DaemonState, daemonPort, ensureHome, machineKey, newToken, paths, removeFile, VERSION, writeSecretJson } from '../config';
+import { type DaemonState, daemonPort, daemonToken, ensureHome, machineKey, paths, removeFile, VERSION, writeSecretJson } from '../config';
 import { createHandlers } from './rpc';
 import { SessionManager } from './sessions';
 import { Store } from './store';
@@ -18,7 +18,7 @@ export async function runDaemon() {
   machineKey();
   const store = new Store(paths.db);
   store.recoverAfterRestart();
-  const token = newToken();
+  const token = daemonToken();
   const port = daemonPort();
 
   let server: ReturnType<typeof Bun.serve<{ id: number }, never>> | null = null;

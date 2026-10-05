@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLynxGlobalEventListener, useState } from '@lynx-js/react';
-import type { AgentAvailability, MachineInfo, Message, Session, Settings } from '@reilai/protocol';
+import type { AgentAvailability, AgentKind, MachineInfo, Message, ModelOption, Session, Settings } from '@reilai/protocol';
 
 import { rpc } from './host';
 import { useServerEvent } from './hooks';
@@ -133,4 +133,34 @@ export function useHello() {
     if (event === 'settings.changed') setInfo((i) => (i ? { ...i, settings: data as Settings } : i));
   });
   return info;
+}
+
+const modelCache = new Map<AgentKind, Promise<ModelOption[]>>();
+
+/** Models the agent offers (fetched once per screen and agent). */
+export function useModels(agent: AgentKind | undefined) {
+  const [models, setModels] = useState<ModelOption[] | null>(null);
+  useEffect(() => {
+    if (!agent) return;
+    setModels(null);
+    let request = modelCache.get(agent);
+    if (!request) {
+      request = rpc('agents.models', { agent });
+      modelCache.set(agent, request);
+      request.catch(() => modelCache.delete(agent));
+    }
+    let alive = true;
+    request.then((list) => alive && setModels(list)).catch(() => alive && setModels([]));
+    return () => {
+      alive = false;
+    };
+  }, [agent]);
+  return models;
+}
+
+/** The option a session's stored model points to (alias, full id or null = default). */
+export function findModel(models: ModelOption[] | null, model: string | null | undefined): ModelOption | undefined {
+  if (!models) return undefined;
+  if (!model) return models.find((m) => m.isDefault) ?? models[0];
+  return models.find((m) => m.id === model || m.resolved === model);
 }

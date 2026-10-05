@@ -49,6 +49,8 @@ export class CodexRunner implements AgentRunner {
   private turnId: string | null = null;
   private mode: PermissionMode;
   private modeDirty = false;
+  private model: string | null;
+  private modelDirty = false;
   private fileChanges = new Map<string, unknown>();
   private exited = false;
 
@@ -57,6 +59,7 @@ export class CodexRunner implements AgentRunner {
     private readonly options: RunnerOptions = {},
   ) {
     this.mode = host.mode;
+    this.model = options.model && options.model !== 'default' ? options.model : null;
     const bin = process.env.REILAI_CODEX_PATH ?? Bun.which('codex') ?? 'codex';
     this.proc = spawn([bin, 'app-server'], { cwd: host.cwd, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' });
     void this.readLines();
@@ -77,7 +80,7 @@ export class CodexRunner implements AgentRunner {
     });
     this.notify('initialized');
     const { approval, sandbox } = POLICY[this.mode];
-    const common = { cwd: this.host.cwd, approvalPolicy: approval, sandbox, model: this.options.model ?? null };
+    const common = { cwd: this.host.cwd, approvalPolicy: approval, sandbox, model: this.model };
     let result: Json | null = null;
     if (this.host.agentRef) {
       try {
@@ -90,7 +93,6 @@ export class CodexRunner implements AgentRunner {
     const thread = result.thread as { id: string };
     this.threadId = thread.id;
     this.host.setAgentRef(thread.id);
-    if (typeof result.model === 'string') this.host.setModel(result.model);
   }
 
   private async readLines() {
@@ -261,6 +263,10 @@ export class CodexRunner implements AgentRunner {
       params.sandboxPolicy = sandboxPolicy(this.mode, this.host.cwd);
       this.modeDirty = false;
     }
+    if (this.modelDirty) {
+      params.model = this.model;
+      this.modelDirty = false;
+    }
     const result = (await this.request('turn/start', params)) as { turn?: { id?: string } };
     this.turnId = result.turn?.id ?? this.turnId;
   }
@@ -272,6 +278,11 @@ export class CodexRunner implements AgentRunner {
   async setMode(mode: PermissionMode) {
     this.mode = mode;
     this.modeDirty = true;
+  }
+
+  async setModel(model: string | null) {
+    this.model = model && model !== 'default' ? model : null;
+    this.modelDirty = true;
   }
 
   async close() {

@@ -172,6 +172,9 @@ input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
 }
 .scrim-center { justify-content: center; align-items: center; }
 .sheet {
+  width: 100%;
+  max-width: 560px;
+  align-self: center;
   background-color: var(--surface);
   border-top-left-radius: 22px;
   border-top-right-radius: 22px;

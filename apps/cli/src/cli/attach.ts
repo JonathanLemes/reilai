@@ -162,6 +162,17 @@ export async function attach(client: DaemonClient, sessionId: string) {
         await client.call('sessions.interrupt', { id: sessionId }).catch(() => {});
         return;
       }
+      if (text.startsWith('/model')) {
+        const model = text.split(/\s+/)[1];
+        if (model) {
+          current = await client.call('sessions.setModel', { id: sessionId, model: model === 'default' ? null : model });
+          println(c.gray(`  ${t('model.title')}: ${current.model ?? t('model.default')}`));
+        } else {
+          const models = await client.call('agents.models', { agent: current.agent });
+          println(models.map((m) => c.gray(`  ${m.id === (current.model ?? 'default') ? '●' : ' '} ${m.id}  ${m.label}`)).join('\n'));
+        }
+        return;
+      }
       if (text.startsWith('/mode')) {
         const mode = text.split(/\s+/)[1] as PermissionMode;
         if (PERMISSION_MODES.includes(mode)) {

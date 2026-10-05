@@ -3,8 +3,12 @@ import { type Language, type MessageKey, resolveLanguage, translator, type Vars 
 import type { ServerEventName, ServerEvents, Settings } from '@reilai/protocol';
 
 import type { ConnectionState } from '../env';
+import { rpc } from './host';
 
 type AnyEvent = { event: ServerEventName; data: unknown };
+
+/** One settings fetch per screen (each bundle is its own JS context). */
+let settingsOnce: Promise<Settings> | null = null;
 
 function first<T>(arg: unknown): T {
   return (Array.isArray(arg) ? arg[0] : arg) as T;
@@ -43,6 +47,13 @@ export function useLanguage(): { lang: Language; t: (key: MessageKey, vars?: Var
     const next = first<{ lang: Language }>(arg);
     if (next?.lang) setLang(next.lang);
   });
+  // authoritative on mount: events sent before this screen booted are lost
+  useEffect(() => {
+    settingsOnce ??= rpc('settings.get', {});
+    settingsOnce
+      .then((s) => setLang(resolveLanguage(s.language, init.systemLocale)))
+      .catch(() => {});
+  }, []);
   return { lang, t: translator(lang) };
 }
 

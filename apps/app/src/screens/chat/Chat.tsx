@@ -1,7 +1,7 @@
 import { useEffect, useInitData, useInitDataChanged, useRef, useState } from '@lynx-js/react';
 import { type Message, PERMISSION_MODES, type PermissionMode, projectName } from '@reilai/protocol';
 
-import { useConversation } from '../../shared/data';
+import { findModel, useConversation, useModels } from '../../shared/data';
 import { haptic, pop, rpc } from '../../shared/host';
 import { useConnection, useLanguage, useLayout } from '../../shared/hooks';
 import { C } from '../../shared/theme';
@@ -48,10 +48,13 @@ export function Chat() {
   const { desktop, safeTop, safeBottom } = useLayout();
   const conn = useConnection();
   const { session, messages, hasMore, error, loading, loadOlder } = useConversation(id);
+  const models = useModels(session?.agent);
+  const currentModel = findModel(models, session?.model);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [menu, setMenu] = useState(false);
   const [modes, setModes] = useState(false);
+  const [modelSheet, setModelSheet] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -222,6 +225,15 @@ export function Chat() {
                 <Icon name="chevronDown" size={12} color={C['text-tertiary']} />
               </view>
             </Pressable>
+            <Pressable className="chip" pressedClassName="chip-on" style={{ marginLeft: '8px', flexShrink: 1 }} onTap={() => setModelSheet(true)}>
+              <Icon name="cpu" size={14} color={C.primary} />
+              <text className="t-caption" text-maxline="1" style={{ marginLeft: '6px', fontWeight: '600', color: C.text }}>
+                {currentModel?.label ?? session.model ?? t('model.default')}
+              </text>
+              <view style={{ marginLeft: '4px' }}>
+                <Icon name="chevronDown" size={12} color={C['text-tertiary']} />
+              </view>
+            </Pressable>
             {conn.state !== 'connected' && (
               <text className="t-caption" style={{ marginLeft: '10px', color: C.warning }}>
                 {conn.state === 'connecting' ? t('conn.connecting') : t('conn.offline')}
@@ -258,6 +270,18 @@ export function Chat() {
           icon: MODE_ICON[mode],
           danger: mode === 'yolo',
           onTap: () => session && act(rpc('sessions.setMode', { id: session.id, mode })),
+        }))}
+      />
+
+      <ActionSheet
+        open={modelSheet}
+        onClose={() => setModelSheet(false)}
+        title={models ? t('model.title') : t('model.loading')}
+        actions={(models ?? []).map((m) => ({
+          label: `${m.label}${currentModel?.id === m.id ? '  ✓' : ''}`,
+          subtitle: m.description,
+          icon: 'cpu' as const,
+          onTap: () => session && act(rpc('sessions.setModel', { id: session.id, model: m.isDefault && m.id === 'default' ? null : m.id })),
         }))}
       />
 

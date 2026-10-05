@@ -61,7 +61,7 @@ export class ClaudeRunner implements AgentRunner {
       options: {
         cwd: host.cwd,
         resume: host.agentRef ?? undefined,
-        model: options.model ?? undefined,
+        model: options.model && options.model !== 'default' ? options.model : undefined,
         permissionMode: MODES[host.mode],
         allowDangerouslySkipPermissions: true,
         includePartialMessages: true,
@@ -97,7 +97,6 @@ export class ClaudeRunner implements AgentRunner {
       case 'system':
         if (message.subtype === 'init') {
           host.setAgentRef(message.session_id);
-          if ('model' in message && typeof message.model === 'string') host.setModel(message.model);
         }
         return;
       case 'stream_event': {
@@ -179,6 +178,10 @@ export class ClaudeRunner implements AgentRunner {
 
   async setMode(mode: PermissionMode) {
     if (!this.closed) await this.q.setPermissionMode(MODES[mode]);
+  }
+
+  async setModel(model: string | null) {
+    if (!this.closed) await this.q.setModel(model && model !== 'default' ? model : undefined);
   }
 
   async close() {

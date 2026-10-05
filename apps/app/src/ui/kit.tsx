@@ -288,7 +288,7 @@ export function ActionSheet({
   open: boolean;
   onClose: () => void;
   title?: string;
-  actions: { label: string; icon?: SolarIconName; danger?: boolean; onTap: () => void }[];
+  actions: { label: string; subtitle?: string; icon?: SolarIconName; danger?: boolean; onTap: () => void }[];
 }) {
   if (!open) return null;
   return (
@@ -300,9 +300,11 @@ export function ActionSheet({
             {title}
           </text>
         )}
+        <scroll-view scroll-orientation="vertical" style={{ maxHeight: '460px' }}>
         {actions.map((a) => (
           <Cell
             key={a.label}
+            subtitle={a.subtitle}
             icon={a.icon}
             iconBg={a.danger ? C['danger-soft'] : C['surface-2']}
             iconColor={a.danger ? C.danger : C.text}
@@ -314,6 +316,7 @@ export function ActionSheet({
             }}
           />
         ))}
+        </scroll-view>
       </view>
     </view>
   );

@@ -30,6 +30,8 @@ export interface AgentRunner {
   send(text: string): Promise<void>;
   interrupt(): Promise<void>;
   setMode(mode: PermissionMode): Promise<void>;
+  /** `null` = the agent's default model */
+  setModel(model: string | null): Promise<void>;
   close(): Promise<void>;
 }
 

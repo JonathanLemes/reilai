@@ -90,6 +90,8 @@ export function onLangChange(l: (lang: Language) => void) {
 export function setLangPref(pref: LanguagePref) {
   langPref = pref;
   for (const l of langListeners) l(currentLang());
+  // screens created before the daemon answered still hold the old language
+  broadcast('reil:lang', { lang: currentLang() });
 }
 
 // ---------------------------------------------------------------------------

@@ -67,7 +67,8 @@ ${c.bold(t('cli.usage'))}
   ${c.brand('reilai ls')} ${c.dim('[--archived]')}          list sessions
   ${c.brand('reilai attach')} ${c.dim('<id>')}             follow and drive a session
   ${c.brand('reilai send')} ${c.dim('<id> <text>')}        send a message without attaching
-  ${c.brand('reilai new')} ${c.dim('<agent> [--cwd dir] [--mode ask|edits|plan|yolo] [prompt]')}
+  ${c.brand('reilai new')} ${c.dim('<agent> [--cwd dir] [--mode ask|edits|plan|yolo] [--model id] [prompt]')}
+  ${c.brand('reilai models')} ${c.dim('<agent>')}           models you can pick (--model / /model)
   ${c.brand('reilai rm')} ${c.dim('<id>')}                 delete a session
 
   ${c.brand('reilai up')} / ${c.brand('down')}              daemon + web + tunnel
@@ -156,9 +157,10 @@ async function newSession(agent: AgentKind, words: string[], attachAfter: boolea
   const modeFlag = flag('mode') as PermissionMode | undefined;
   const mode = modeFlag && PERMISSION_MODES.includes(modeFlag) ? modeFlag : 'ask';
   const prompt = words.join(' ').trim() || undefined;
+  const model = flag('model') ?? null;
   const client = await daemonClient();
   setLanguage((await client.call('settings.get')).language);
-  const session = await client.call('sessions.create', { agent, cwd, prompt, mode, startedBy: 'cli' });
+  const session = await client.call('sessions.create', { agent, cwd, prompt, mode, model, startedBy: 'cli' });
   ok(t('cli.sessionCreated', { id: session.id.slice(0, 8), cwd }));
   if (attachAfter) await attach(client, session.id);
   client.close();
@@ -265,6 +267,16 @@ async function main() {
       const agent = rest[0];
       if (agent !== 'claude' && agent !== 'codex') fail('agent must be claude or codex');
       await newSession(agent, rest.slice(1), flag('attach') === 'true');
+      return;
+    }
+    case 'models': {
+      const agent = rest[0];
+      if (agent !== 'claude' && agent !== 'codex') fail('agent must be claude or codex');
+      const client = await daemonClient();
+      for (const m of await client.call('agents.models', { agent })) {
+        console.log(`  ${m.isDefault ? c.green('●') : ' '} ${c.bold(m.id.padEnd(26))} ${m.label.padEnd(24)} ${c.dim(m.description)}`);
+      }
+      client.close();
       return;
     }
     case 'attach': {

@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 
 import { randomToken, safeEqual } from '@reilai/crypto';
 
+import { listModels } from '../agents/models';
 import { machineKey, machineName, VERSION } from '../config';
 import type { Broadcast, SessionManager } from './sessions';
 import type { Store } from './store';
@@ -82,7 +83,7 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
         cwd: expand(requireString(p.cwd, 'cwd')),
         prompt: p.prompt,
         mode: p.mode && PERMISSION_MODES.includes(p.mode) ? p.mode : 'ask',
-        model: p.model ?? null,
+        model: p.model && p.model !== 'default' ? p.model : null,
         startedBy: p.startedBy,
       }),
     'sessions.send': async (p) => {
@@ -100,6 +101,11 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
     'sessions.setMode': (p) => {
       if (!PERMISSION_MODES.includes(p.mode)) throw new RpcError('bad_request', 'Unknown mode');
       return sessions.setMode(requireString(p.id, 'id'), p.mode);
+    },
+    'sessions.setModel': (p) => sessions.setModel(requireString(p.id, 'id'), typeof p.model === 'string' && p.model ? p.model : null),
+    'agents.models': (p) => {
+      if (p.agent !== 'claude' && p.agent !== 'codex') throw new RpcError('bad_request', 'Unknown agent');
+      return listModels(p.agent);
     },
     'sessions.rename': (p) => {
       sessions.get(requireString(p.id, 'id'));

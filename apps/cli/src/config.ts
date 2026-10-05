@@ -106,6 +106,19 @@ export function machineName(): string {
   return process.env.REILAI_MACHINE_NAME ?? hostname();
 }
 
+/** Stable across daemon restarts, so the web service and the tunnel reconnect on their own. */
+export function daemonToken(): string {
+  const file = join(HOME, 'daemon-token');
+  if (existsSync(file)) {
+    const saved = readFileSync(file, 'utf8').trim();
+    if (saved) return saved;
+  }
+  const token = randomToken(24);
+  ensureHome();
+  writeFileSync(file, token, { mode: 0o600 });
+  return token;
+}
+
 export function newToken(): string {
   return randomToken(24);
 }

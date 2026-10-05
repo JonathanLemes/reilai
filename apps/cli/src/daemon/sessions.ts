@@ -160,8 +160,8 @@ class LiveSession implements RunnerHost {
     if (ref !== this.session.agentRef) this.manager.patch(this.sessionId, { agentRef: ref });
   }
 
-  setModel(model: string) {
-    this.manager.patch(this.sessionId, { model });
+  setModel(_model: string) {
+    // the session keeps the user's choice (alias or null = default), not the resolved id
   }
 
   modeChanged(mode: PermissionMode) {
@@ -363,6 +363,12 @@ export class SessionManager {
   async setMode(id: string, mode: PermissionMode) {
     const session = this.patch(id, { mode });
     await this.live.get(id)?.runner?.setMode(mode);
+    return session ?? this.get(id);
+  }
+
+  async setModel(id: string, model: string | null) {
+    const session = this.patch(id, { model: model && model !== 'default' ? model : null });
+    await this.live.get(id)?.runner?.setModel(model);
     return session ?? this.get(id);
   }
 

@@ -51,6 +51,10 @@ export const en = {
   'mode.plan.hint': 'Read-only, plans before acting',
   'mode.yolo.hint': 'Never asks. Use with care',
 
+  // models
+  'model.title': 'Model',
+  'model.default': 'Default',
+  'model.loading': 'Loading models…',
   // connection
   'conn.connected': 'Connected',
   'conn.connecting': 'Connecting…',
@@ -184,7 +188,7 @@ export const en = {
   'cli.pairWaiting': 'Waiting for the device…',
   'cli.pairDone': 'Paired with {name}',
   'cli.noSessions': 'No sessions yet. Start one with `reilai claude` or `reilai codex`.',
-  'cli.attachHint': 'Type a message and press Enter. /stop interrupts, /mode <ask|edits|plan|yolo>, /exit leaves (the session keeps running).',
+  'cli.attachHint': 'Type a message and press Enter. /stop interrupts, /mode <ask|edits|plan|yolo>, /model [id], /exit leaves (the session keeps running).',
   'cli.permissionPrompt': 'Allow? [y]es / [a]lways / [n]o',
   'cli.languageSet': 'Language set to {lang}',
   'cli.unknownCommand': 'Unknown command: {cmd}',

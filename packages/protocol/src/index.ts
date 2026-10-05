@@ -131,6 +131,16 @@ export interface Device {
   lastSeenAt: number | null;
 }
 
+/** A model the agent can run. `id` is what gets sent to the agent (alias or full id). */
+export interface ModelOption {
+  id: string;
+  label: string;
+  description: string;
+  /** full model id an alias resolves to (Claude `sonnet` → `claude-sonnet-…`) */
+  resolved?: string;
+  isDefault?: boolean;
+}
+
 export interface DirEntry {
   name: string;
   path: string;
@@ -150,6 +160,9 @@ export interface RpcMethods {
   'sessions.interrupt': [{ id: string }, { ok: true }];
   'sessions.stop': [{ id: string }, { ok: true }];
   'sessions.setMode': [{ id: string; mode: PermissionMode }, Session];
+  /** `null` goes back to the agent's default model */
+  'sessions.setModel': [{ id: string; model: string | null }, Session];
+  'agents.models': [{ agent: AgentKind }, ModelOption[]];
   'sessions.rename': [{ id: string; title: string }, Session];
   'sessions.archive': [{ id: string; archived: boolean }, Session];
   'sessions.delete': [{ id: string }, { ok: true }];
@@ -208,6 +221,8 @@ export const REMOTE_METHODS: ReadonlySet<RpcMethod> = new Set<RpcMethod>([
   'sessions.interrupt',
   'sessions.stop',
   'sessions.setMode',
+  'sessions.setModel',
+  'agents.models',
   'sessions.rename',
   'sessions.archive',
   'sessions.delete',

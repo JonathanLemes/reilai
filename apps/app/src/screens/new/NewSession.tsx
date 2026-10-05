@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useInitData, useState } from '@lynx-js/react';
 import { type AgentKind, type DirEntry, PERMISSION_MODES, type PermissionMode } from '@reilai/protocol';
 
-import { useHello } from '../../shared/data';
+import { findModel, useHello, useModels } from '../../shared/data';
 import { dismiss, kvGet, kvSet, push, rpc, selectTab } from '../../shared/host';
 import { useLanguage, useLayout } from '../../shared/hooks';
 import { C } from '../../shared/theme';
 import { AgentAvatar } from '../../ui/agent';
-import { Button, Header, Icon, IconButton, Pressable, Segmented, Spinner, Toast } from '../../ui/kit';
+import { ActionSheet, Button, Cell, Header, Icon, IconButton, Pressable, Segmented, Spinner, Toast } from '../../ui/kit';
 import './new.css';
 
 const MODE_ICON = { ask: 'shieldCheck', edits: 'edit', plan: 'task', yolo: 'bolt' } as const;
@@ -45,6 +45,10 @@ export function NewSession() {
   const hello = useHello();
   const [agent, setAgent] = useState<AgentKind>('claude');
   const [mode, setMode] = useState<PermissionMode>('ask');
+  const [model, setModel] = useState<string | null>(null);
+  const [modelSheet, setModelSheet] = useState(false);
+  const models = useModels(agent);
+  const selectedModel = findModel(models, model);
   const [cwd, setCwd] = useState('');
   const [tab, setTab] = useState<'recent' | 'browse'>('recent');
   const [recent, setRecent] = useState<DirEntry[] | null>(null);
@@ -95,7 +99,7 @@ export function NewSession() {
     kvSet('new.agent', agent);
     kvSet('new.mode', mode);
     try {
-      const session = await rpc('sessions.create', { agent, cwd, prompt: prompt.trim() || undefined, mode, startedBy: 'app' });
+      const session = await rpc('sessions.create', { agent, cwd, prompt: prompt.trim() || undefined, mode, model, startedBy: 'app' });
       if (asTab) {
         selectTab('sessions');
         lynx.createSelectorQuery().select('#prompt').invoke({ method: 'setValue', params: { value: '' } }).exec();
@@ -130,7 +134,11 @@ export function NewSession() {
                 key={a}
                 className={`agent-card${on ? ' agent-card-on' : ''}`}
                 style={{ marginRight: a === 'claude' ? '10px' : '0px', opacity: disabled ? 0.45 : 1 }}
-                onTap={() => !disabled && setAgent(a)}
+                onTap={() => {
+                  if (disabled || a === agent) return;
+                  setAgent(a);
+                  setModel(null);
+                }}
               >
                 <AgentAvatar agent={a} size={36} />
                 <text className="t-body bold" style={{ marginTop: '10px' }}>
@@ -145,6 +153,17 @@ export function NewSession() {
               </Pressable>
             );
           })}
+        </view>
+
+        <text className="t-section group-label">{t('model.title').toUpperCase()}</text>
+        <view className="card" style={{ margin: '0 16px' }}>
+          <Cell
+            icon="cpu"
+            title={selectedModel?.label ?? (models ? (model ?? t('model.default')) : t('model.loading'))}
+            subtitle={selectedModel?.description}
+            chevron
+            onTap={() => setModelSheet(true)}
+          />
         </view>
 
         <text className="t-section group-label">{t('new.folder').toUpperCase()}</text>
@@ -247,6 +266,17 @@ export function NewSession() {
           onTap={start}
         />
       </view>
+      <ActionSheet
+        open={modelSheet}
+        onClose={() => setModelSheet(false)}
+        title={models ? t('model.title') : t('model.loading')}
+        actions={(models ?? []).map((m) => ({
+          label: `${m.label}${selectedModel?.id === m.id ? '  ✓' : ''}`,
+          subtitle: m.description,
+          icon: 'cpu' as const,
+          onTap: () => setModel(m.isDefault && m.id === 'default' ? null : m.id),
+        }))}
+      />
       <Toast text={toast} />
     </view>
   );

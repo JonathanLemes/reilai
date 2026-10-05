@@ -47,6 +47,9 @@ export const pt: Dictionary = {
   'mode.plan.hint': 'Só leitura, planeja antes de agir',
   'mode.yolo.hint': 'Nunca pergunta. Use com cuidado',
 
+  'model.title': 'Modelo',
+  'model.default': 'Padrão',
+  'model.loading': 'Carregando modelos…',
   'conn.connected': 'Conectado',
   'conn.connecting': 'Conectando…',
   'conn.offline': 'Sem conexão',
@@ -170,7 +173,7 @@ export const pt: Dictionary = {
   'cli.pairWaiting': 'Aguardando o dispositivo…',
   'cli.pairDone': 'Pareado com {name}',
   'cli.noSessions': 'Nenhuma sessão ainda. Inicie com `reilai claude` ou `reilai codex`.',
-  'cli.attachHint': 'Digite uma mensagem e tecle Enter. /stop interrompe, /mode <ask|edits|plan|yolo>, /exit sai (a sessão continua).',
+  'cli.attachHint': 'Digite uma mensagem e tecle Enter. /stop interrompe, /mode <ask|edits|plan|yolo>, /model [id], /exit sai (a sessão continua).',
   'cli.permissionPrompt': 'Permitir? [s]im / [a]sempre / [n]ão',
   'cli.languageSet': 'Idioma definido: {lang}',
   'cli.unknownCommand': 'Comando desconhecido: {cmd}',
