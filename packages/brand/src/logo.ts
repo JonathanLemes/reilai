@@ -4,5 +4,5 @@ export const LOGO_SHAPES = "<rect x=\"443.423\" y=\"550\" width=\"360\" height=\
 export const LOGO_VIEWBOX = '0 0 770 886';
 
 export function logoMarkup(color: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${LOGO_VIEWBOX}" fill="${color}">${LOGO_SHAPES}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${LOGO_VIEWBOX}" fill="${color}" stroke="${color}" stroke-width="3" stroke-linejoin="round">${LOGO_SHAPES}</svg>`;
 }

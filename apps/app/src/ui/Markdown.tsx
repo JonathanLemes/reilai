@@ -5,6 +5,11 @@ import { C } from '../shared/theme';
 import { Icon } from './kit';
 import { type Inline, parseMarkdown } from './markdown-parse';
 
+/** Lynx text collapses leading spaces: keep code indentation with no-break spaces. */
+export function preserveIndent(code: string) {
+  return code.replace(/\t/g, '  ').replace(/^ +/gm, (m) => '\u00a0'.repeat(m.length));
+}
+
 function Inlines({ items }: { items: Inline[] }) {
   return (
     <>
@@ -88,7 +93,7 @@ export function Markdown({ text, color }: { text: string; color?: string }) {
                   </view>
                 </view>
                 <scroll-view scroll-orientation="horizontal" className="md-code-body">
-                  <text className="t-mono">{b.v}</text>
+                  <text className="t-mono">{preserveIndent(b.v)}</text>
                 </scroll-view>
               </view>
             );

@@ -6,7 +6,7 @@ import type { AgentKind, Message, PermissionDecision } from '@reilai/protocol';
 import { copyText } from '../../shared/host';
 import { C } from '../../shared/theme';
 import { Button, Icon, Pressable, Spinner } from '../../ui/kit';
-import { Markdown } from '../../ui/Markdown';
+import { Markdown, preserveIndent } from '../../ui/Markdown';
 
 type T = (key: MessageKey, vars?: Vars) => string;
 
@@ -107,7 +107,7 @@ export function ToolRow({ m, t }: { m: Message; t: T }) {
             {t('chat.toolInput').toUpperCase()}
           </text>
           <scroll-view scroll-orientation="horizontal">
-            <text className="t-mono">{inputPreview(tool.name, tool.input)}</text>
+            <text className="t-mono">{preserveIndent(inputPreview(tool.name, tool.input))}</text>
           </scroll-view>
           {!!tool.output && (
             <>
@@ -116,7 +116,7 @@ export function ToolRow({ m, t }: { m: Message; t: T }) {
               </text>
               <scroll-view scroll-orientation="horizontal">
                 <text className="t-mono" style={tool.status === 'error' ? { color: C.danger } : undefined}>
-                  {tool.output.length > 6000 ? `${tool.output.slice(0, 6000)}\n…` : tool.output}
+                  {preserveIndent(tool.output.length > 6000 ? `${tool.output.slice(0, 6000)}\n…` : tool.output)}
                 </text>
               </scroll-view>
             </>
@@ -177,7 +177,7 @@ export function PermissionCard({
       </view>
       <view className="perm-detail">
         <scroll-view scroll-orientation="vertical" style={{ maxHeight: '220px' }}>
-          <text className="t-mono">{p.detail}</text>
+          <text className="t-mono">{preserveIndent(p.detail)}</text>
         </scroll-view>
       </view>
       <view className="row" style={{ marginTop: '12px' }}>

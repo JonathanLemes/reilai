@@ -32,7 +32,7 @@ export const pt: Dictionary = {
   'agent.notInstalled': 'Não instalado',
 
   'status.starting': 'Iniciando',
-  'status.idle': 'Parado',
+  'status.idle': 'Pronto',
   'status.running': 'Trabalhando',
   'status.waiting': 'Aguardando aprovação',
   'status.error': 'Erro',

@@ -36,7 +36,9 @@ function flag(name: string): string | undefined {
 
 function lanAddresses(): string[] {
   const out: string[] = [];
-  for (const list of Object.values(networkInterfaces())) {
+  for (const [name, list] of Object.entries(networkInterfaces())) {
+    // container bridges are not reachable from a phone
+    if (/^(docker|br-|veth|virbr|lxc|cni|flannel|podman)/.test(name)) continue;
     for (const addr of list ?? []) {
       if (addr.family === 'IPv4' && !addr.internal) out.push(addr.address);
     }

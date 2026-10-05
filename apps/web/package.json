@@ -1,0 +1,33 @@
+{
+  "name": "@reilai/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rsbuild dev",
+    "build": "bun scripts/icons.ts && rsbuild build",
+    "start": "bun src/server.ts",
+    "check-types": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@lynx-js/lynx-core": "^0.1.4",
+    "@lynx-js/web-core": "^0.26.2",
+    "@lynx-js/web-elements": "^0.12.12",
+    "@reilai/brand": "workspace:*",
+    "@reilai/cli": "workspace:*",
+    "@reilai/i18n": "workspace:*",
+    "@reilai/protocol": "workspace:*",
+    "core-js": "^3.50.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "@reilai/crypto": "workspace:*"
+  },
+  "devDependencies": {
+    "@lynx-js/web-platform-rsbuild-plugin": "^0.1.2",
+    "@rsbuild/core": "^2.2.9",
+    "@rsbuild/plugin-react": "^2.1.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "sharp": "^0.35.4"
+  }
+}

@@ -218,7 +218,9 @@ export function Chat() {
               <text className="t-caption" style={{ marginLeft: '6px', fontWeight: '600', color: C.text }}>
                 {t(`mode.${session.mode}`)}
               </text>
-              <Icon name="chevronDown" size={12} color={C['text-tertiary']} />
+              <view style={{ marginLeft: '4px' }}>
+                <Icon name="chevronDown" size={12} color={C['text-tertiary']} />
+              </view>
             </Pressable>
             {conn.state !== 'connected' && (
               <text className="t-caption" style={{ marginLeft: '10px', color: C.warning }}>

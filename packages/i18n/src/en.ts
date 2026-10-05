@@ -35,7 +35,7 @@ export const en = {
 
   // status
   'status.starting': 'Starting',
-  'status.idle': 'Idle',
+  'status.idle': 'Ready',
   'status.running': 'Working',
   'status.waiting': 'Needs approval',
   'status.error': 'Error',

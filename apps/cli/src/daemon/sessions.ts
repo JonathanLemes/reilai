@@ -27,8 +27,15 @@ function newId() {
   return randomUUID().replace(/-/g, '').slice(0, 16);
 }
 
+/** Plain-text preview for lists: markdown markers out, whitespace collapsed. */
 function preview(text: string) {
-  return text.replace(/\s+/g, ' ').trim().slice(0, 140);
+  return text
+    .replace(/```[\s\S]*?(```|$)/g, ' ')
+    .replace(/[`*_#>]+/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 140);
 }
 
 /** Runtime state of a session whose agent process is alive. */
