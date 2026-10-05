@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.turbo/
+*.log
+.env
+.DS_Store
+apps/app/android/.gradle/
+apps/app/android/build/
+apps/app/android/app/build/
+apps/app/android/local.properties
+apps/app/android/app/src/main/assets/*.lynx.bundle
+test-results/

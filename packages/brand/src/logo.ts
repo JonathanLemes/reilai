@@ -1,0 +1,8 @@
+/** Logo shapes (viewBox 0 0 770 886), drawn by Jonathan Lemes. Recolor via `logoMarkup(color)`. */
+export const LOGO_SHAPES = "<rect x=\"443.423\" y=\"550\" width=\"360\" height=\"80\" transform=\"rotate(40 443.423 550)\"/>\n<path d=\"M443.5 550C413 526.5 392.5 510 340 510V590C366.63 590 377.029 598.869 392.5 611.5L443.5 550Z\"/>\n<rect x=\"190\" y=\"510\" width=\"150\" height=\"80\"/>\n<rect x=\"190\" y=\"340\" width=\"350\" height=\"80\"/>\n<rect x=\"100\" y=\"60\" width=\"440\" height=\"80\"/>\n<circle cx=\"100\" cy=\"100\" r=\"100\"/>\n<circle cx=\"695\" cy=\"811\" r=\"75\"/>\n<path d=\"M190 510C137.5 511 122.5 426.5 190 420V340C27 344.5 20.5 580 190 590V510Z\"/>\n<path d=\"M541 140H540V60C773.5 66 785 408.5 540 420V340C668 337.5 677.5 147.5 541 140Z\"/>";
+
+export const LOGO_VIEWBOX = '0 0 770 886';
+
+export function logoMarkup(color: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${LOGO_VIEWBOX}" fill="${color}">${LOGO_SHAPES}</svg>`;
+}

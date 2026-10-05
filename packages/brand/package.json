@@ -1,0 +1,16 @@
+{
+  "name": "@reilai/brand",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit -p .",
+    "test": "bun test --pass-with-no-tests"
+  },
+  "devDependencies": {
+    "@iconify-json/solar": "^1.2.13"
+  }
+}
