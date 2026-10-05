@@ -196,4 +196,7 @@ export const pt: Dictionary = {
   'cli.languageSet': 'Idioma definido: {lang}',
   'cli.unknownCommand': 'Comando desconhecido: {cmd}',
   'cli.sessionCreated': 'Sessão {id} iniciada em {cwd}',
+  'cli.waitingTurn': 'Aguardando o turno atual terminar para abrir a interface do terminal…',
+  'cli.terminalLeft': 'Você saiu da interface do terminal, a sessão continua: reilai attach {id}',
+  'cli.detachHint': 'Ctrl+] sai da interface do terminal sem parar o agente',
 };

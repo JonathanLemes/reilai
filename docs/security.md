@@ -11,9 +11,12 @@ treated as root-equivalent. This document describes every way in and how it is p
 | Web service | `0.0.0.0:7420` | Browsers / installed PWA | Access token (`~/.reilai/web-token`), method allowlist. Put it behind HTTPS (Tailscale Serve, Caddy…) when used outside a trusted network |
 | Tunnel | `0.0.0.0:7430` (+ optional relay uplink) | Paired native apps | End-to-end encrypted channel below, device allowlist, method allowlist |
 | Relay | public host | Nobody (forwards opaque frames) | Sees only ciphertext and a routing id |
+| Claude hooks | daemon `POST /hook` | The `claude` TUI of a terminal session | Per-process random token, passed only in that process environment and dropped when it exits |
+| Codex app-server | `~/.reilai/run/<session>.sock` | Daemon and `codex --remote` from `reilai codex` | Unix socket in a 0700 folder (mode 0600), no network listener |
 
 Remote clients (web and tunnel) can only call the methods in `REMOTE_METHODS`
-(`packages/protocol`). Pairing management (`pairing.create`, `devices.authorize`) is local only.
+(`packages/protocol`). Pairing management (`pairing.create`, `devices.authorize`) and the
+terminal methods (`terminal.*`, raw keystrokes into an agent) are local only.
 
 ## Tunnel channel
 

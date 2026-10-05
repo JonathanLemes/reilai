@@ -167,7 +167,16 @@ export interface RpcMethods {
   'sessions.list': [{ archived?: boolean }, Session[]];
   'sessions.get': [{ id: string; before?: number; limit?: number }, { session: Session; messages: Message[]; hasMore: boolean }];
   'sessions.create': [
-    { agent: AgentKind; cwd: string; prompt?: string; mode?: PermissionMode; model?: string | null; startedBy?: ClientKind },
+    {
+      agent: AgentKind;
+      cwd: string;
+      prompt?: string;
+      mode?: PermissionMode;
+      model?: string | null;
+      startedBy?: ClientKind;
+      /** started from a terminal that will attach the agent's own TUI (`terminal.attach`) */
+      terminal?: boolean;
+    },
     Session,
   ];
   'sessions.send': [{ id: string; text: string }, { ok: true }];
@@ -195,7 +204,30 @@ export interface RpcMethods {
   'pairing.create': [Record<string, never>, { token: string; expiresAt: number; machineKey: string; machineName: string }];
   'pairing.status': [{ token: string }, { device: Device | null; expired: boolean }];
   'devices.authorize': [{ publicKey: string; pairingToken?: string; name?: string }, Device | null];
+  /**
+   * Attaches the agent's own terminal UI to this connection (CLI only).
+   * Claude: the daemon runs `claude` in a PTY and streams it as `terminal.data`.
+   * Codex: the CLI runs `codex --remote` against the session's app-server socket.
+   */
+  'terminal.attach': [{ id: string; cols: number; rows: number }, TerminalAttach];
+  /** raw keyboard bytes, base64 */
+  'terminal.input': [{ id: string; data: string }, { ok: true }];
+  'terminal.resize': [{ id: string; cols: number; rows: number }, { ok: true }];
+  'terminal.detach': [{ id: string }, { ok: true }];
 }
+
+export type TerminalAttach =
+  | { kind: 'pty' }
+  | {
+      kind: 'codex';
+      /** app-server endpoint for `codex --remote` */
+      socket: string;
+      /** thread to resume, or null to let the TUI start it (the daemon joins it) */
+      threadId: string | null;
+      cwd: string;
+      mode: PermissionMode;
+      model: string | null;
+    };
 
 export type RpcMethod = keyof RpcMethods;
 export type RpcParams<M extends RpcMethod> = RpcMethods[M][0];
@@ -209,6 +241,9 @@ export interface ServerEvents {
   'message.update': Message;
   'settings.changed': Settings;
   'devices.changed': Device[];
+  /** only sent to the connection that attached the terminal; data is base64 */
+  'terminal.data': { id: string; data: string };
+  'terminal.exit': { id: string; code: number | null };
 }
 
 export type ServerEventName = keyof ServerEvents;

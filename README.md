@@ -103,7 +103,7 @@ bun run build                       # Lynx bundles + web shell
 ln -s "$PWD/apps/cli/bin/reilai" ~/.local/bin/reilai
 
 reilai up                           # daemon + tunnel + web, prints the browser link
-reilai claude "explain this repo"   # start Claude Code here and follow it live
+reilai claude "explain this repo"   # Claude Code's own UI, shared live with browser and phone
 ```
 
 Open the printed `http://<your-ip>:7420/#token=…` link on any device (it is remembered).
@@ -125,14 +125,14 @@ encrypted tunnel. To reach the computer outside your network, run `reilai relay`
 
 | Command | What it does |
 | --- | --- |
-| `reilai claude [prompt]` / `reilai codex [prompt]` | New session in the current folder, attached |
+| `reilai claude [prompt]` / `reilai codex [prompt]` | New session in the current folder, in the agent's own terminal UI (slash commands, autocomplete, shortcuts). Everything is shared live with the browser and the app, and either side can continue it. `Ctrl+]` leaves the UI without stopping the agent |
 | `reilai ls [--archived]` | List sessions |
-| `reilai attach <id>` | Follow and drive a session (approve with `y`/`a`/`n`, `/stop`, `/mode plan`, `/model sonnet`, `/exit`) |
+| `reilai attach <id>` | Open any session (also ones started in the browser) in the agent's UI. `--plain` gives the line view (approve with `y`/`a`/`n`, `/stop`, `/mode plan`, `/model sonnet`, `/exit`) |
 | `reilai send <id> <text>` | Send a message without attaching |
 | `reilai new <agent> [--cwd dir] [--mode ask\|edits\|plan\|yolo] [--model id] [prompt]` | Create a session |
 | `reilai models <agent>` | Models you can pick (`--model`, `/model <id>` while attached) |
 | `reilai end <id>` | Stop the agent (frees its memory) |
-| `reilai resume <id>` | Start it again with its context, unarchive and attach |
+| `reilai resume <id>` | Start it again with its context, unarchive and open it in the agent's UI |
 | `reilai rm <id>` | Delete a session |
 | `reilai up` / `reilai down` | Start / stop daemon, tunnel and web |
 | `reilai start` / `stop` / `status` | The daemon only |

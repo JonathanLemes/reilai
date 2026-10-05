@@ -9,11 +9,12 @@ import qrcode from 'qrcode-terminal';
 
 import { readDaemonState, readServiceState, VERSION } from './config';
 import { attach, sessionLine } from './cli/attach';
+import { openTerminal } from './cli/terminal';
 import { daemonClient, SERVICES, type ServiceName, startDaemon, startService, stopDaemon, stopService } from './cli/services';
 import { banner, c, currentLanguage, fail, ok, setLanguage, t } from './cli/ui';
 
 /** `--name value` / `--flag` pairs, removed from the positional arguments. */
-const BOOLEAN_FLAGS = new Set(['archived', 'attach', 'help', 'version']);
+const BOOLEAN_FLAGS = new Set(['archived', 'attach', 'help', 'version', 'plain']);
 const flags = new Map<string, string>();
 const argv: string[] = [];
 {
@@ -62,10 +63,10 @@ function help() {
   console.log(`${banner()}  ${c.dim(`v${VERSION}`)}
 
 ${c.bold(t('cli.usage'))}
-  ${c.brand('reilai claude')} ${c.dim('[prompt]')}          start Claude Code here and follow it live
-  ${c.brand('reilai codex')} ${c.dim('[prompt]')}           start Codex here and follow it live
+  ${c.brand('reilai claude')} ${c.dim('[prompt]')}          Claude Code's own UI here, shared live with the browser and app
+  ${c.brand('reilai codex')} ${c.dim('[prompt]')}           Codex's own UI here, shared live with the browser and app
   ${c.brand('reilai ls')} ${c.dim('[--archived]')}          list sessions
-  ${c.brand('reilai attach')} ${c.dim('<id>')}             follow and drive a session
+  ${c.brand('reilai attach')} ${c.dim('<id> [--plain]')}     open a session in the agent's UI (--plain: line view)
   ${c.brand('reilai send')} ${c.dim('<id> <text>')}        send a message without attaching
   ${c.brand('reilai new')} ${c.dim('<agent> [--cwd dir] [--mode ask|edits|plan|yolo] [--model id] [prompt]')}
   ${c.brand('reilai models')} ${c.dim('<agent>')}           models you can pick (--model / /model)
@@ -81,6 +82,8 @@ ${c.bold(t('cli.usage'))}
   ${c.brand('reilai pair')}                       pair the mobile app (QR code)
   ${c.brand('reilai devices')} ${c.dim('[revoke <id>]')}      paired devices
   ${c.brand('reilai lang')} ${c.dim('[en|pt|system]')}        language for every client
+
+  ${c.dim(t('cli.detachHint'))}
 `);
 }
 
@@ -154,17 +157,22 @@ async function pair() {
   client.close();
 }
 
-async function newSession(agent: AgentKind, words: string[], attachAfter: boolean) {
+/** `terminal`: the agent's own UI in this terminal (otherwise the session runs in the background). */
+async function newSession(agent: AgentKind, words: string[], mode: 'terminal' | 'background' | 'attach') {
   const cwd = resolve(flag('cwd') ?? process.cwd());
   const modeFlag = flag('mode') as PermissionMode | undefined;
-  const mode = modeFlag && PERMISSION_MODES.includes(modeFlag) ? modeFlag : 'ask';
+  const permission = modeFlag && PERMISSION_MODES.includes(modeFlag) ? modeFlag : undefined;
   const prompt = words.join(' ').trim() || undefined;
   const model = flag('model') ?? null;
   const client = await daemonClient();
   setLanguage((await client.call('settings.get')).language);
-  const session = await client.call('sessions.create', { agent, cwd, prompt, mode, model, startedBy: 'cli' });
-  ok(t('cli.sessionCreated', { id: session.id.slice(0, 8), cwd }));
-  if (attachAfter) await attach(client, session.id);
+  const terminal = mode === 'terminal' && process.stdin.isTTY && process.stdout.isTTY;
+  const session = await client.call('sessions.create', { agent, cwd, prompt, mode: permission, model, startedBy: 'cli', terminal });
+  if (terminal) await openTerminal(client, session.id, prompt);
+  else {
+    ok(t('cli.sessionCreated', { id: session.id.slice(0, 8), cwd }));
+    if (mode !== 'background') await attach(client, session.id);
+  }
   client.close();
 }
 
@@ -263,12 +271,12 @@ async function main() {
     }
     case 'claude':
     case 'codex':
-      await newSession(cmd, rest, true);
+      await newSession(cmd, rest, flag('plain') === 'true' ? 'attach' : 'terminal');
       return;
     case 'new': {
       const agent = rest[0];
       if (agent !== 'claude' && agent !== 'codex') fail('agent must be claude or codex');
-      await newSession(agent, rest.slice(1), flag('attach') === 'true');
+      await newSession(agent, rest.slice(1), flag('attach') === 'true' ? 'terminal' : 'background');
       return;
     }
     case 'models': {
@@ -283,7 +291,8 @@ async function main() {
     }
     case 'attach': {
       const client = await daemonClient();
-      await attach(client, await resolveId(client, rest[0]));
+      const id = await resolveId(client, rest[0]);
+      await (flag('plain') === 'true' ? attach(client, id) : openTerminal(client, id));
       client.close();
       return;
     }
@@ -305,8 +314,10 @@ async function main() {
     case 'resume': {
       const client = await daemonClient();
       const id = await resolveId(client, rest[0]);
-      await client.call('sessions.resume', { id });
-      await attach(client, id);
+      if (flag('plain') === 'true') {
+        await client.call('sessions.resume', { id });
+        await attach(client, id);
+      } else await openTerminal(client, id);
       client.close();
       return;
     }

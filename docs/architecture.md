@@ -34,6 +34,32 @@ the terminal, the browser or the phone shows up everywhere and streams live to e
 - **Codex** (`apps/cli/src/agents/codex.ts`): `codex app-server` over stdio JSON-RPC (the same
   protocol the IDE extension uses): threads, turns, streamed deltas and approval requests.
 
+## Terminal sessions
+
+`reilai claude` / `reilai codex` (and `reilai attach`) show the agent's **own** terminal UI, not
+a ReilAI view, while every other client keeps following and driving the same session:
+
+- **Codex**: each session's `codex app-server` listens on a private Unix socket
+  (`~/.reilai/run/<id>.sock`). The daemon is one client; the CLI runs `codex --remote unix://…`
+  (`resume <thread>` for an existing thread) as another. Both subscribe to the same thread, so
+  turns, streaming and approvals reach both, and an approval answered on one side is resolved on
+  the other (`serverRequest/resolved`). A thread only becomes resumable after its first turn, so
+  for a new session the TUI starts the thread and the daemon joins it as soon as the rollout
+  exists, backfilling what it missed. Title and sub-agent threads (ephemeral / child) are ignored.
+- **Claude Code**: there is no remote mode for its TUI, so the daemon runs the real `claude` in a
+  PTY (`agents/claude-tui.ts`) and the CLI streams it (`terminal.attach/input/resize`). Other
+  clients follow it through hooks injected with `--settings` (prompt submitted, approval shown,
+  tool done, turn end, all posted to the daemon's `/hook`) and the session transcript (messages).
+  They drive it by typing into the same PTY: messages as bracketed paste + Enter (queued while the
+  TUI boots or shows a dialog), approvals as the dialog keys, interrupt as Esc, mode as Shift+Tab
+  until the footer matches, model as `/model`. A session started on the Agent SDK switches to the
+  TUI when a terminal attaches (same Claude session id, so the context carries over).
+
+`Ctrl+]` leaves the UI without stopping the agent; sessions with a terminal attached are never
+stopped for idleness. The agent's own UI keeps its native defaults: a new terminal session only
+gets a permission mode when `--mode` is given (Claude's `auto` mode has no ReilAI equivalent and
+is left as is in the session).
+
 Both are normalized into one message model (`packages/protocol`): `text`, `thinking`, `tool`,
 `permission` and `event`, with four portable permission modes (`ask`, `edits`, `plan`, `yolo`).
 Sessions resume after a daemon restart through the Claude session id or Codex thread id.

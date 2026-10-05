@@ -1,14 +1,20 @@
+import { chmodSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { type Subprocess, spawn } from 'bun';
 
 import type { PermissionDecision, PermissionMode } from '@reilai/protocol';
 
-import { VERSION } from '../config';
+import { paths, VERSION } from '../config';
 import { resultText } from './describe';
+import { agentEnv } from './env';
 import type { AgentRunner, RunnerHost, RunnerOptions } from './types';
+import { UnixWebSocket } from './unix-ws';
 
 type Json = Record<string, unknown>;
 
-const POLICY: Record<PermissionMode, { approval: string; sandbox: string }> = {
+export const POLICY: Record<PermissionMode, { approval: string; sandbox: string }> = {
   ask: { approval: 'untrusted', sandbox: 'workspace-write' },
   edits: { approval: 'on-request', sandbox: 'workspace-write' },
   plan: { approval: 'on-request', sandbox: 'read-only' },
@@ -27,6 +33,23 @@ function wire(decision: PermissionDecision, legacy: boolean): string {
   return decision === 'allow' ? 'accept' : decision === 'allow_session' ? 'acceptForSession' : 'decline';
 }
 
+/** Unix sockets are capped at ~108 bytes; a long REILAI_HOME falls back to a private tmp dir. */
+function socketPath(sessionId: string): string {
+  let dir = join(paths.home, 'run');
+  if (join(dir, `${sessionId}.sock`).length > 100) dir = join(tmpdir(), `reilai-${process.getuid?.() ?? 'user'}`);
+  mkdirSync(dir, { recursive: true });
+  chmodSync(dir, 0o700);
+  return join(dir, `${sessionId}.sock`);
+}
+
+function itemText(item: Json): string {
+  if (!Array.isArray(item.content)) return '';
+  return (item.content as { type?: string; text?: string }[])
+    .filter((c) => c.type === 'text' && c.text)
+    .map((c) => c.text)
+    .join('\n');
+}
+
 function changesDetail(changes: unknown): string {
   if (!Array.isArray(changes)) return '';
   return (changes as { path?: string; diff?: string }[])
@@ -36,12 +59,16 @@ function changesDetail(changes: unknown): string {
 }
 
 /**
- * Codex through `codex app-server` (JSON-RPC over stdio), one process per session.
- * Same transport the official IDE extension uses, so approvals, streaming and
- * thread resume all come from Codex itself.
+ * Codex through `codex app-server` (JSON-RPC), one process per session, listening
+ * on a private Unix socket. The daemon is one client; `codex --remote` (Codex's
+ * own TUI, from `reilai codex`) can join as another. Both are subscribed to the
+ * same thread, so turns, streaming and approvals show up in both, and an
+ * approval answered in one is resolved in the other (`serverRequest/resolved`).
  */
 export class CodexRunner implements AgentRunner {
-  private proc: Subprocess<'pipe', 'pipe', 'pipe'>;
+  private proc: Subprocess<'ignore', 'ignore', 'pipe'>;
+  private ws: UnixWebSocket | null = null;
+  readonly socket: string;
   private nextId = 1;
   private pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
   private ready: Promise<void>;
@@ -53,6 +80,16 @@ export class CodexRunner implements AgentRunner {
   private modelDirty = false;
   private fileChanges = new Map<string, unknown>();
   private exited = false;
+  /** a thread has a rollout (and can be resumed by another client) after its first turn */
+  private materialized = false;
+  private startingThread = false;
+  /** items already reported, so a backfill after joining a thread skips them */
+  private seen = new Set<string>();
+  /** texts we sent, to tell them apart from turns typed in the TUI */
+  private sent: string[] = [];
+  /** approval request id → item id, for approvals answered in the TUI */
+  private settledElsewhere = new Map<string, string>();
+  private openApprovals = new Map<string, string>();
 
   constructor(
     private readonly host: RunnerHost,
@@ -61,19 +98,47 @@ export class CodexRunner implements AgentRunner {
     this.mode = host.mode;
     this.model = options.model && options.model !== 'default' ? options.model : null;
     const bin = process.env.REILAI_CODEX_PATH ?? Bun.which('codex') ?? 'codex';
-    this.proc = spawn([bin, 'app-server'], { cwd: host.cwd, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' });
-    void this.readLines();
+    this.socket = socketPath(host.sessionId);
+    rmSync(this.socket, { force: true });
+    this.proc = spawn([bin, 'app-server', '--listen', `unix://${this.socket}`], {
+      cwd: host.cwd,
+      env: agentEnv(),
+      stdin: 'ignore',
+      stdout: 'ignore',
+      stderr: 'pipe',
+    });
     void this.drainStderr();
     void this.proc.exited.then((code) => {
       this.exited = true;
+      this.ws?.close();
+      rmSync(this.socket, { force: true });
       for (const p of this.pending.values()) p.reject(new Error(`codex exited (${code})`));
       this.pending.clear();
       host.closed(code === 0 || code === 143 ? undefined : `codex app-server exited with code ${code}`);
     });
     this.ready = this.boot();
+    this.ready.catch((e: Error) => {
+      host.info(`Codex: ${e.message}`);
+      this.proc.kill();
+    });
+  }
+
+  private async connect() {
+    const until = Date.now() + 15_000;
+    while (!existsSync(this.socket)) {
+      if (this.exited) throw new Error('codex app-server exited while starting');
+      if (Date.now() > until) throw new Error('codex app-server did not open its socket');
+      await Bun.sleep(50);
+    }
+    this.ws = await UnixWebSocket.connect(this.socket);
+    this.ws.onmessage = (text) => this.onLine(text);
+    this.ws.onclose = () => {
+      if (!this.exited) this.proc.kill();
+    };
   }
 
   private async boot() {
+    await this.connect();
     await this.request('initialize', {
       clientInfo: { name: 'reilai', title: 'ReilAI', version: VERSION },
       capabilities: { experimentalApi: true },
@@ -85,27 +150,78 @@ export class CodexRunner implements AgentRunner {
     if (this.host.agentRef) {
       try {
         result = (await this.request('thread/resume', { threadId: this.host.agentRef, ...common, excludeTurns: true })) as Json;
+        this.materialized = true;
       } catch (e) {
         this.host.info(`Could not resume the Codex thread, starting a new one (${(e as Error).message})`);
       }
     }
-    result ??= (await this.request('thread/start', common)) as Json;
+    if (!result) {
+      this.startingThread = true;
+      try {
+        result = (await this.request('thread/start', common)) as Json;
+      } finally {
+        this.startingThread = false;
+      }
+    }
     const thread = result.thread as { id: string };
     this.threadId = thread.id;
     this.host.setAgentRef(thread.id);
   }
 
-  private async readLines() {
-    const decoder = new TextDecoder();
-    let buffer = '';
-    for await (const chunk of this.proc.stdout) {
-      buffer += decoder.decode(chunk, { stream: true });
-      let nl = buffer.indexOf('\n');
-      while (nl >= 0) {
-        const line = buffer.slice(0, nl).trim();
-        buffer = buffer.slice(nl + 1);
-        if (line) this.onLine(line);
-        nl = buffer.indexOf('\n');
+  async remoteEndpoint() {
+    await this.ready;
+    return { socket: this.socket, threadId: this.materialized ? this.threadId : null };
+  }
+
+  /**
+   * Another client (the TUI) started a thread: follow it. Joining needs its
+   * rollout, which exists once the first turn starts, so retry until then and
+   * backfill what was missed.
+   */
+  private adopt(threadId: string) {
+    const previous = this.threadId;
+    this.threadId = threadId;
+    this.turnId = null;
+    this.materialized = false;
+    this.host.setAgentRef(threadId);
+    if (previous && previous !== threadId) void this.request('thread/unsubscribe', { threadId: previous }).catch(() => {});
+  }
+
+  private joining = false;
+
+  private async join(threadId: string) {
+    if (this.joining) return;
+    this.joining = true;
+    try {
+      for (let attempt = 0; attempt < 40 && this.threadId === threadId && !this.exited; attempt++) {
+        try {
+          const result = (await this.request('thread/resume', { threadId })) as { thread?: { turns?: Json[] } };
+          this.materialized = true;
+          this.backfill(result.thread?.turns ?? []);
+          return;
+        } catch {
+          await Bun.sleep(250);
+        }
+      }
+    } finally {
+      this.joining = false;
+    }
+  }
+
+  private backfill(turns: Json[]) {
+    for (const turn of turns) {
+      const items = Array.isArray(turn.items) ? (turn.items as (Json & { id: string; type: string })[]) : [];
+      const running = turn.status === 'inProgress';
+      if (running) {
+        this.turnId = String(turn.id);
+        this.host.turnStart();
+      }
+      for (const item of items) {
+        if (this.seen.has(item.id)) continue;
+        // in a running turn, unfinished items complete through the live notifications
+        const done = !running || item.type === 'userMessage' || (typeof item.status === 'string' && item.status !== 'inProgress');
+        this.onNotification('item/started', { threadId: this.threadId, item });
+        if (done) this.onNotification('item/completed', { threadId: this.threadId, item });
       }
     }
   }
@@ -117,9 +233,8 @@ export class CodexRunner implements AgentRunner {
   }
 
   private write(message: Json) {
-    if (this.exited) return;
-    this.proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...message })}\n`);
-    this.proc.stdin.flush();
+    if (this.exited || !this.ws) return;
+    this.ws.send(JSON.stringify({ jsonrpc: '2.0', ...message }));
   }
 
   private request(method: string, params: unknown): Promise<unknown> {
@@ -136,6 +251,7 @@ export class CodexRunner implements AgentRunner {
   }
 
   private onLine(line: string) {
+    if (process.env.REILAI_DEBUG_CODEX) console.log('[codex]', line.slice(0, 300));
     let msg: Json;
     try {
       msg = JSON.parse(line) as Json;
@@ -162,30 +278,38 @@ export class CodexRunner implements AgentRunner {
 
   private async onServerRequest(id: number, method: string, params: Json) {
     const host = this.host;
+    const key = String(id);
+    const itemId = String(params.itemId ?? params.callId ?? '');
+    if (itemId) this.openApprovals.set(key, itemId);
     if (method === 'item/commandExecution/requestApproval' || method === 'execCommandApproval') {
       const command = Array.isArray(params.command) ? params.command.join(' ') : String(params.command ?? '');
-      const decision = await host.requestPermission({
-        tool: 'bash',
-        title: `$ ${command.split('\n')[0]}`,
-        detail: command + (params.reason ? `\n\n# ${String(params.reason)}` : ''),
-      });
-      this.write({ id, result: { decision: wire(decision, method === 'execCommandApproval') } });
+      const decision = await host.requestPermission(
+        {
+          tool: 'bash',
+          title: `$ ${command.split('\n')[0]}`,
+          detail: command + (params.reason ? `\n\n# ${String(params.reason)}` : ''),
+        },
+        key,
+      );
+      if (decision) this.write({ id, result: { decision: wire(decision, method === 'execCommandApproval') } });
       return;
     }
     if (method === 'item/fileChange/requestApproval' || method === 'applyPatchApproval') {
-      const itemId = String(params.itemId ?? params.callId ?? '');
       const detail = changesDetail(params.fileChanges ?? this.fileChanges.get(itemId)) || String(params.reason ?? '');
-      const decision = await host.requestPermission({ tool: 'edit', title: 'Apply file changes', detail });
-      this.write({ id, result: { decision: wire(decision, method === 'applyPatchApproval') } });
+      const decision = await host.requestPermission({ tool: 'edit', title: 'Apply file changes', detail }, key);
+      if (decision) this.write({ id, result: { decision: wire(decision, method === 'applyPatchApproval') } });
       return;
     }
     if (method === 'mcpServer/elicitation/request') {
-      const decision = await host.requestPermission({
-        tool: 'mcp',
-        title: String(params.serverName ?? 'MCP tool'),
-        detail: String(params.message ?? ''),
-      });
-      this.write({ id, result: { action: decision === 'deny' ? 'decline' : 'accept', content: null, _meta: null } });
+      const decision = await host.requestPermission(
+        {
+          tool: 'mcp',
+          title: String(params.serverName ?? 'MCP tool'),
+          detail: String(params.message ?? ''),
+        },
+        key,
+      );
+      if (decision) this.write({ id, result: { action: decision === 'deny' ? 'decline' : 'accept', content: null, _meta: null } });
       return;
     }
     this.write({ id, error: { code: -32601, message: `ReilAI does not support ${method} yet` } });
@@ -194,13 +318,40 @@ export class CodexRunner implements AgentRunner {
   private onNotification(method: string, params: Json) {
     const host = this.host;
     const item = params.item as (Json & { id: string; type: string }) | undefined;
+    if (method === 'thread/started') {
+      const thread = params.thread as { id?: string; ephemeral?: boolean; parentThreadId?: string | null } | undefined;
+      // a thread we did not start: the TUI began a new conversation (title generation and
+      // sub-agents run in ephemeral / child threads, which are not the conversation)
+      if (thread?.id && thread.id !== this.threadId && !this.startingThread && !thread.ephemeral && !thread.parentThreadId) {
+        this.adopt(thread.id);
+      }
+      return;
+    }
+    if (method === 'serverRequest/resolved') {
+      const key = String(params.requestId);
+      const itemId = this.openApprovals.get(key);
+      this.openApprovals.delete(key);
+      if (itemId) this.settledElsewhere.set(itemId, key);
+      host.permissionSettled(key, 'allow');
+      return;
+    }
+    // other threads on this app-server are not this session
+    if (typeof params.threadId === 'string' && this.threadId && params.threadId !== this.threadId) return;
+    if (method === 'thread/status/changed') {
+      const type = (params.status as { type?: string } | undefined)?.type;
+      if (!this.materialized && type === 'active' && this.threadId) void this.join(this.threadId);
+      return;
+    }
     switch (method) {
       case 'turn/started':
         this.turnId = (params.turn as { id?: string } | undefined)?.id ?? null;
+        this.materialized = true;
+        host.turnStart();
         return;
       case 'turn/completed': {
         const turn = params.turn as { status?: string; error?: { message?: string } | null } | undefined;
         this.turnId = null;
+        this.sent = [];
         const status = turn?.status === 'failed' ? 'failed' : turn?.status === 'interrupted' ? 'interrupted' : 'completed';
         host.turnEnd(status, { error: turn?.error?.message });
         return;
@@ -218,7 +369,8 @@ export class CodexRunner implements AgentRunner {
         host.thinkingDelta(String(params.itemId), String(params.delta ?? ''));
         return;
       case 'item/started':
-        if (!item) return;
+        if (!item || this.seen.has(item.id)) return;
+        this.seen.add(item.id);
         if (item.type === 'commandExecution') {
           host.toolStart(item.id, 'bash', `$ ${String(item.command ?? '').split('\n')[0]}`, { command: item.command });
         } else if (item.type === 'fileChange') {
@@ -233,7 +385,18 @@ export class CodexRunner implements AgentRunner {
         return;
       case 'item/completed':
         if (!item) return;
-        if (item.type === 'agentMessage') host.textDone(item.id, String(item.text ?? ''));
+        this.seen.add(item.id);
+        if (this.settledElsewhere.has(item.id)) {
+          const key = this.settledElsewhere.get(item.id)!;
+          this.settledElsewhere.delete(item.id);
+          if (item.status === 'declined') host.permissionSettled(key, 'deny');
+        }
+        if (item.type === 'userMessage') {
+          const text = itemText(item);
+          const index = this.sent.indexOf(text);
+          if (index >= 0) this.sent.splice(index, 1);
+          else if (text.trim()) host.userMessage(text);
+        } else if (item.type === 'agentMessage') host.textDone(item.id, String(item.text ?? ''));
         else if (item.type === 'reasoning') {
           const summary = Array.isArray(item.summary) ? (item.summary as string[]).join('\n\n') : '';
           if (summary) host.thinkingDone(item.id, summary);
@@ -257,6 +420,7 @@ export class CodexRunner implements AgentRunner {
   async send(text: string) {
     await this.ready;
     this.host.turnStart();
+    this.sent.push(text);
     const params: Json = { threadId: this.threadId, input: [{ type: 'text', text, text_elements: [] }] };
     if (this.modeDirty) {
       params.approvalPolicy = POLICY[this.mode].approval;

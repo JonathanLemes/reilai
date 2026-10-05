@@ -11,11 +11,13 @@ import {
   type ServerEventName,
   type ServerEvents,
   type Session,
+  type TerminalAttach,
 } from '@reilai/protocol';
 
 import { ClaudeRunner } from '../agents/claude';
+import { ClaudeTuiRunner } from '../agents/claude-tui';
 import { CodexRunner } from '../agents/codex';
-import type { AgentRunner, RunnerHost } from '../agents/types';
+import type { AgentRunner, RunnerHost, RunnerOptions, TerminalSink } from '../agents/types';
 import type { Store } from './store';
 
 export type Broadcast = <E extends ServerEventName>(event: E, data: ServerEvents[E]) => void;
@@ -45,7 +47,9 @@ class LiveSession implements RunnerHost {
   runner: AgentRunner | null = null;
   private items = new Map<string, Message>();
   private tools = new Map<string, Message>();
-  private permissions = new Map<string, { message: Message; resolve: (d: PermissionDecision) => void }>();
+  private permissions = new Map<string, { message: Message; key?: string; resolve: (d: PermissionDecision | null) => void }>();
+  /** approvals answered in the agent's own UI, by runner key, in case the guess needs a correction */
+  private settled = new Map<string, Message>();
   private dirty = new Set<Message>();
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private turnStartedAt = 0;
@@ -137,7 +141,19 @@ class LiveSession implements RunnerHost {
     this.tools.delete(callId);
   }
 
+  userMessage(text: string) {
+    this.manager.append(this.sessionId, { role: 'user', kind: 'text', text });
+    const session = this.session;
+    this.manager.patch(this.sessionId, {
+      preview: preview(text),
+      title: session.title || text.replace(/\s+/g, ' ').trim().slice(0, TITLE_MAX),
+      archived: false,
+    });
+  }
+
   turnStart() {
+    const status = this.session.status;
+    if (status === 'running' || status === 'waiting') return;
     this.turnStartedAt = Date.now();
     this.manager.patch(this.sessionId, { status: 'running', error: null });
   }
@@ -174,7 +190,7 @@ class LiveSession implements RunnerHost {
     this.manager.append(this.sessionId, { role: 'system', kind: 'event', event: { type: 'info', text } });
   }
 
-  requestPermission(request: { tool: string; title: string; detail: string }): Promise<PermissionDecision> {
+  requestPermission(request: { tool: string; title: string; detail: string }, key?: string): Promise<PermissionDecision | null> {
     const requestId = newId();
     const message = this.manager.append(this.sessionId, {
       role: 'agent',
@@ -182,10 +198,24 @@ class LiveSession implements RunnerHost {
       permission: { requestId, tool: request.tool, title: request.title, detail: request.detail, status: 'pending' },
     });
     return new Promise((resolve) => {
-      this.permissions.set(requestId, { message, resolve });
+      this.permissions.set(requestId, { message, key, resolve });
       this.syncPending();
       this.manager.patch(this.sessionId, { status: 'waiting' });
     });
+  }
+
+  permissionSettled(key: string, decision: PermissionDecision) {
+    const found = [...this.permissions.entries()].find(([, e]) => e.key === key);
+    const message = found?.[1].message ?? this.settled.get(key);
+    if (!message?.permission) return;
+    message.permission = { ...message.permission, status: decision === 'deny' ? 'denied' : 'allowed', decision };
+    this.manager.update(message);
+    if (!found) return;
+    this.permissions.delete(found[0]);
+    this.settled.set(key, message);
+    this.syncPending();
+    this.manager.patch(this.sessionId, { status: this.permissions.size > 0 ? 'waiting' : 'running' });
+    found[1].resolve(null);
   }
 
   respond(requestId: string, decision: PermissionDecision) {
@@ -231,13 +261,19 @@ class LiveSession implements RunnerHost {
   closed(error?: string) {
     this.closeOpenItems();
     this.expirePermissions();
+    this.settled.clear();
     this.runner = null;
+    for (const waiter of this.closeWaiters.splice(0)) waiter();
     this.manager.runnerClosed(this.sessionId, error);
   }
+
+  closeWaiters: (() => void)[] = [];
 }
 
 export class SessionManager {
   private live = new Map<string, LiveSession>();
+  /** terminals showing each session: an agent someone is looking at is never stopped for idleness */
+  private terminals = new Map<string, number>();
   private sweeper: ReturnType<typeof setInterval>;
 
   constructor(
@@ -256,6 +292,7 @@ export class SessionManager {
         continue;
       }
       const session = this.store.getSession(id);
+      if (this.terminals.get(id)) continue;
       if (session?.status === 'idle' && now - session.updatedAt > IDLE_STOP_MS) await live.runner.close().catch(() => {});
     }
   }
@@ -298,6 +335,7 @@ export class SessionManager {
     mode?: PermissionMode;
     model?: string | null;
     startedBy?: ClientKind;
+    terminal?: boolean;
   }): Session {
     if (params.agent !== 'claude' && params.agent !== 'codex') throw new RpcError('bad_request', 'Unknown agent');
     if (!existsSync(params.cwd) || !statSync(params.cwd).isDirectory()) {
@@ -324,7 +362,14 @@ export class SessionManager {
     this.store.insertSession(session);
     this.store.touchRecentDir(params.cwd);
     this.broadcast('session.upsert', session);
-    if (params.prompt?.trim()) {
+    if (params.terminal) {
+      // the agent's own UI takes the first prompt (Codex: the CLI passes it to `codex --remote`)
+      this.ensureRunner(session.id, {
+        tui: true,
+        prompt: params.agent === 'claude' ? params.prompt : undefined,
+        explicitMode: params.mode !== undefined,
+      });
+    } else if (params.prompt?.trim()) {
       void this.send(session.id, params.prompt).catch(() => {});
     } else {
       this.ensureRunner(session.id);
@@ -332,7 +377,64 @@ export class SessionManager {
     return this.get(session.id);
   }
 
-  private ensureRunner(id: string): LiveSession {
+  /**
+   * Attaches the agent's own terminal UI. A Claude session on the Agent SDK
+   * switches to the TUI (same Claude session id, so the context carries over).
+   */
+  async terminalAttach(id: string, cols: number, rows: number, sink: TerminalSink): Promise<{ result: TerminalAttach; detach: () => void }> {
+    const { result, detach } = await this.openTerminal(id, cols, rows, sink);
+    this.terminals.set(id, (this.terminals.get(id) ?? 0) + 1);
+    let open = true;
+    return {
+      result,
+      detach: () => {
+        if (!open) return;
+        open = false;
+        detach();
+        const left = (this.terminals.get(id) ?? 1) - 1;
+        if (left > 0) this.terminals.set(id, left);
+        else this.terminals.delete(id);
+      },
+    };
+  }
+
+  private async openTerminal(id: string, cols: number, rows: number, sink: TerminalSink): Promise<{ result: TerminalAttach; detach: () => void }> {
+    const session = this.get(id);
+    if (session.archived) this.patch(id, { archived: false });
+    if (session.agent === 'codex') {
+      const live = this.ensureRunner(id);
+      const endpoint = await live.runner!.remoteEndpoint!();
+      const current = this.get(id);
+      return {
+        result: { kind: 'codex', ...endpoint, cwd: current.cwd, mode: current.mode, model: current.model },
+        detach: () => {},
+      };
+    }
+    let live = this.live.get(id);
+    if (live?.runner && !(live.runner instanceof ClaudeTuiRunner)) {
+      if (session.status === 'running' || session.status === 'waiting') {
+        throw new RpcError('busy', 'The agent is in the middle of a turn');
+      }
+      const closing = new Promise<void>((resolve) => live!.closeWaiters.push(resolve));
+      await live.runner.close();
+      await Promise.race([closing, Bun.sleep(5000)]);
+      live.runner = null;
+    }
+    live = this.ensureRunner(id, { tui: true, explicitMode: true });
+    const detach = live.runner!.attachTerminal!(sink, cols, rows);
+    return { result: { kind: 'pty' }, detach };
+  }
+
+  terminalInput(id: string, data: Uint8Array) {
+    this.live.get(id)?.runner?.terminalInput?.(data);
+  }
+
+  terminalResize(id: string, cols: number, rows: number) {
+    this.live.get(id)?.runner?.terminalResize?.(cols, rows);
+  }
+
+  /** `tui`: Claude's own terminal UI in a PTY instead of the Agent SDK (terminal sessions). */
+  private ensureRunner(id: string, start: { tui?: boolean } & RunnerOptions = {}): LiveSession {
     const session = this.get(id);
     let live = this.live.get(id);
     if (!live) {
@@ -341,9 +443,14 @@ export class SessionManager {
     }
     if (!live.runner) {
       this.patch(id, { status: 'starting', error: null });
+      const options: RunnerOptions = { model: session.model, prompt: start.prompt, explicitMode: start.explicitMode };
       try {
         live.runner =
-          session.agent === 'claude' ? new ClaudeRunner(live, { model: session.model }) : new CodexRunner(live, { model: session.model });
+          session.agent === 'codex'
+            ? new CodexRunner(live, options)
+            : start.tui
+              ? new ClaudeTuiRunner(live, options)
+              : new ClaudeRunner(live, options);
         this.patch(id, { status: 'idle' });
       } catch (e) {
         this.patch(id, { status: 'error', error: (e as Error).message });

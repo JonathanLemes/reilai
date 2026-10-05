@@ -9,6 +9,7 @@ import {
 import type { PermissionMode } from '@reilai/protocol';
 
 import { resultText, toolDetail, toolTitle } from './describe';
+import { agentEnv } from './env';
 import { AsyncQueue } from './queue';
 import type { AgentRunner, RunnerHost, RunnerOptions } from './types';
 
@@ -49,7 +50,7 @@ export class ClaudeRunner implements AgentRunner {
         title: toolTitle(toolName, toolInput),
         detail: toolDetail(toolName, toolInput),
       });
-      if (decision === 'deny') return { behavior: 'deny', message: 'The user denied this action.' };
+      if (decision === 'deny' || decision === null) return { behavior: 'deny', message: 'The user denied this action.' };
       if (toolName === 'ExitPlanMode') host.modeChanged('ask');
       return {
         behavior: 'allow',
@@ -72,7 +73,7 @@ export class ClaudeRunner implements AgentRunner {
         pathToClaudeCodeExecutable: process.env.REILAI_CLAUDE_PATH ?? Bun.which('claude') ?? undefined,
         canUseTool,
         abortController: this.abort,
-        env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: 'sdk-ts' } as Record<string, string>,
+        env: agentEnv({ CLAUDE_CODE_ENTRYPOINT: 'sdk-ts' }),
       },
     });
     void this.pump();

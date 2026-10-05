@@ -213,6 +213,9 @@ export const en = {
   'cli.languageSet': 'Language set to {lang}',
   'cli.unknownCommand': 'Unknown command: {cmd}',
   'cli.sessionCreated': 'Session {id} started in {cwd}',
+  'cli.waitingTurn': 'Waiting for the current turn to finish to open the terminal UI…',
+  'cli.terminalLeft': 'Left the terminal UI, the session keeps running: reilai attach {id}',
+  'cli.detachHint': 'Ctrl+] leaves the terminal UI without stopping the agent',
 } as const;
 
 export type MessageKey = keyof typeof en;

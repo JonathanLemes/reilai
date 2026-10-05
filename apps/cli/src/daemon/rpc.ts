@@ -22,7 +22,11 @@ import { machineKey, machineName, VERSION } from '../config';
 import type { Broadcast, SessionManager } from './sessions';
 import type { Store } from './store';
 
-type Handlers = { [M in RpcMethod]: (params: RpcMethods[M][0]) => Promise<RpcMethods[M][1]> | RpcMethods[M][1] };
+/** `terminal.*` need the calling connection, so the server handles them (server.ts). */
+export type ConnectionMethod = Extract<RpcMethod, `terminal.${string}`>;
+type Handlers = {
+  [M in Exclude<RpcMethod, ConnectionMethod>]: (params: RpcMethods[M][0]) => Promise<RpcMethods[M][1]> | RpcMethods[M][1];
+};
 
 const agentCache = new Map<string, AgentAvailability>();
 
@@ -83,9 +87,10 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
         agent: p.agent,
         cwd: expand(requireString(p.cwd, 'cwd')),
         prompt: p.prompt,
-        mode: p.mode && PERMISSION_MODES.includes(p.mode) ? p.mode : 'ask',
+        mode: p.mode && PERMISSION_MODES.includes(p.mode) ? p.mode : undefined,
         model: p.model && p.model !== 'default' ? p.model : null,
         startedBy: p.startedBy,
+        terminal: p.terminal === true,
       }),
     'sessions.send': async (p) => {
       await sessions.send(requireString(p.id, 'id'), requireString(p.text, 'text'));
