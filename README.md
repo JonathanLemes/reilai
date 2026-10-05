@@ -15,7 +15,11 @@ Every conversation is shared and live on all of them.</p>
 <p align="center">
   <img src="docs/screenshots/mobile-dark.png" width="260" alt="ReilAI mobile web, dark" />
   &nbsp;&nbsp;
-  <img src="docs/screenshots/android-chat.png" width="260" alt="ReilAI native Android app" />
+  <img src="docs/screenshots/android-pair.png" width="260" alt="ReilAI native Android app, pairing" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/desktop-dark-new.png" width="860" alt="New session in dark mode" />
 </p>
 
 ## Why
@@ -75,6 +79,16 @@ self-hosted remote control for **Claude Code** and **Codex**, inspired by
 - **Frontend** (`apps/app`): one ReactLynx project, one bundle per screen, compiled for native
   (`.lynx.bundle`) and for the browser (`.web.bundle` inside `<lynx-view>`). Screens talk to a
   small `ReilHost` bridge that each host implements. See [docs/architecture.md](docs/architecture.md).
+
+## Status
+
+| Piece | State |
+| --- | --- |
+| Daemon, CLI, Claude Code and Codex runners | Working, tested with real sessions |
+| Web service (desktop, mobile, PWA) | Working, tested in Chromium |
+| Tunnel + relay (end-to-end encryption, pairing, revocation) | Working, covered by unit tests and an end-to-end smoke test |
+| Android host | Builds; pairing over the tunnel verified on an emulator. Needs testing on a real ARM phone (x86_64 emulators with ARM translation crash the Lynx runtime) |
+| iOS host | Not started (the `ReilHost` bridge and CryptoKit primitives are ready for it) |
 
 ## Requirements
 
