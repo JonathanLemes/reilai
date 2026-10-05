@@ -1,0 +1,23 @@
+{
+  "name": "@reilai/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "reilai": "./bin/reilai"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit -p .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.289",
+    "@reilai/crypto": "workspace:*",
+    "@reilai/i18n": "workspace:*",
+    "@reilai/protocol": "workspace:*",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/qrcode-terminal": "^0.12.2"
+  }
+}

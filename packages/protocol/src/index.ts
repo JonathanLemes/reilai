@@ -160,6 +160,10 @@ export interface RpcMethods {
   'settings.set': [Partial<Settings>, Settings];
   'devices.list': [Record<string, never>, Device[]];
   'devices.revoke': [{ id: string }, { ok: true }];
+  // Local only (CLI and tunnel, authenticated with the daemon token). Never proxied to remote clients.
+  'pairing.create': [Record<string, never>, { token: string; expiresAt: number; machineKey: string; machineName: string }];
+  'pairing.status': [{ token: string }, { device: Device | null; expired: boolean }];
+  'devices.authorize': [{ publicKey: string; pairingToken?: string; name?: string }, Device | null];
 }
 
 export type RpcMethod = keyof RpcMethods;

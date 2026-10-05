@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# ReilAI CLI launcher (Bun runtime).
+DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+exec bun "$DIR/../src/index.ts" "$@"
