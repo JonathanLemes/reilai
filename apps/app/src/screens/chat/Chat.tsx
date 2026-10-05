@@ -10,16 +10,15 @@ import { AgentAvatar, StatusDot } from '../../ui/agent';
 import {
   ActionSheet,
   Button,
-  ConfirmDialog,
   EmptyState,
   Header,
   Icon,
   IconButton,
   Pressable,
-  PromptDialog,
   Spinner,
   Toast,
 } from '../../ui/kit';
+import { useSessionActions } from '../../shared/session-actions';
 import { AgentText, EventLine, openFile, PermissionCard, Thinking, ToolRow, UserBubble, WorkingIndicator } from './parts';
 import './chat.css';
 
@@ -53,11 +52,8 @@ export function Chat() {
   const currentModel = findModel(models, session?.model);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
-  const [menu, setMenu] = useState(false);
   const [modes, setModes] = useState(false);
   const [modelSheet, setModelSheet] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [renaming, setRenaming] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const scrolledOnce = useRef(false);
   const lastCount = useRef(0);
@@ -66,6 +62,12 @@ export function Chat() {
     setToast(text);
     setTimeout(() => setToast(null), 2600);
   };
+  const sessionActions = useSessionActions({
+    t,
+    flash,
+    onDeleted: () => !desktop && pop(),
+    onArchived: () => !desktop && setTimeout(pop, 700),
+  });
 
   // follow the conversation: jump on first load, glide on new content
   const tail = messages[messages.length - 1];
@@ -108,17 +110,6 @@ export function Chat() {
   };
 
   const act = (p: Promise<unknown>) => p.catch((e: Error) => flash(e.message));
-
-  const archive = (archived: boolean) => {
-    if (!session) return;
-    act(
-      rpc('sessions.archive', { id: session.id, archived }).then(() => {
-        if (!archived) return;
-        flash(t('sessions.archivedToast'));
-        if (!desktop) setTimeout(pop, 600);
-      }),
-    );
-  };
 
   const renderMessage = (m: Message) => {
     switch (m.kind) {
@@ -167,8 +158,8 @@ export function Chat() {
           session && (
             <view className="row">
               {desktop && <IconButton name="folderOpen" onTap={() => openFile(session.cwd, session.cwd)} />}
-              {desktop && <IconButton name="archive" onTap={() => archive(!session.archived)} />}
-              <IconButton name="more" onTap={() => setMenu(true)} />
+              {desktop && <IconButton name="archive" onTap={() => sessionActions.requestArchive(session)} />}
+              <IconButton name="more" onTap={() => sessionActions.openMenu(session)} />
             </view>
           )
         }
@@ -223,10 +214,13 @@ export function Chat() {
           ))}
           <list-item item-key="tail" key="tail">
             {running && !lastIsStreaming ? <WorkingIndicator t={t} /> : null}
-            {session?.status === 'stopped' && messages.length > 0 && (
-              <text className="t-caption tertiary" style={{ textAlign: 'center', padding: '10px 24px' }}>
-                {t('chat.stopped')}
-              </text>
+            {session && (session.status === 'stopped' || session.status === 'error' || session.archived) && messages.length > 0 && (
+              <view className="col" style={{ alignItems: 'center', padding: '12px 24px' }}>
+                <text className="t-caption tertiary" style={{ textAlign: 'center', marginBottom: '10px' }}>
+                  {t('chat.stopped')}
+                </text>
+                <Button small variant="secondary" icon="play" label={t('chat.resume')} onTap={() => sessionActions.resume(session)} />
+              </view>
             )}
             <view style={{ height: '12px' }} />
           </list-item>
@@ -305,51 +299,7 @@ export function Chat() {
         }))}
       />
 
-      <ActionSheet
-        open={menu}
-        onClose={() => setMenu(false)}
-        title={session?.cwd}
-        actions={[
-          { label: t('chat.menu.files'), icon: 'folderOpen', onTap: () => session && openFile(session.cwd, session.cwd) },
-          { label: t('common.rename'), icon: 'rename', onTap: () => setRenaming(true) },
-          ...(running ? [{ label: t('chat.stop'), icon: 'stop' as const, onTap: () => session && act(rpc('sessions.interrupt', { id: session.id })) }] : []),
-          {
-            label: t('chat.menu.stopAgent'),
-            icon: 'close',
-            onTap: () => session && act(rpc('sessions.stop', { id: session.id })),
-          },
-          {
-            label: session?.archived ? t('chat.menu.unarchive') : t('chat.menu.archive'),
-            icon: 'archive',
-            onTap: () => session && archive(!session.archived),
-          },
-          { label: t('chat.menu.delete'), icon: 'trash', danger: true, onTap: () => setConfirmDelete(true) },
-        ]}
-      />
-
-      <ConfirmDialog
-        open={confirmDelete}
-        title={t('chat.deleteConfirm')}
-        confirmLabel={t('common.delete')}
-        cancelLabel={t('common.cancel')}
-        danger
-        onClose={() => setConfirmDelete(false)}
-        onConfirm={() => {
-          if (!session) return;
-          act(rpc('sessions.delete', { id: session.id }).then(() => !desktop && pop()));
-        }}
-      />
-
-      <PromptDialog
-        key={renaming ? 'r1' : 'r0'}
-        open={renaming}
-        title={t('chat.renamePrompt')}
-        initial={session?.title ?? ''}
-        confirmLabel={t('common.save')}
-        cancelLabel={t('common.cancel')}
-        onClose={() => setRenaming(false)}
-        onSubmit={(title) => session && act(rpc('sessions.rename', { id: session.id, title }))}
-      />
+      {sessionActions.elements}
 
       <Toast text={toast} />
     </view>

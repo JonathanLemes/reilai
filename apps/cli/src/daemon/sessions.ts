@@ -21,6 +21,8 @@ import type { Store } from './store';
 export type Broadcast = <E extends ServerEventName>(event: E, data: ServerEvents[E]) => void;
 
 const STREAM_FLUSH_MS = 50;
+/** Idle agents are stopped to free memory; the next message resumes them. */
+const IDLE_STOP_MS = Number(process.env.REILAI_IDLE_STOP_MINUTES ?? 15) * 60_000;
 const TITLE_MAX = 64;
 
 function newId() {
@@ -236,11 +238,33 @@ class LiveSession implements RunnerHost {
 
 export class SessionManager {
   private live = new Map<string, LiveSession>();
+  private sweeper: ReturnType<typeof setInterval>;
 
   constructor(
     readonly store: Store,
     readonly broadcast: Broadcast,
-  ) {}
+  ) {
+    this.sweeper = setInterval(() => void this.stopIdle(), 60_000);
+  }
+
+  /** Stops agents that sat idle (no turn, no pending approval) for IDLE_STOP_MS. */
+  private async stopIdle() {
+    const now = Date.now();
+    for (const [id, live] of this.live) {
+      if (!live.runner) {
+        this.live.delete(id);
+        continue;
+      }
+      const session = this.store.getSession(id);
+      if (session?.status === 'idle' && now - session.updatedAt > IDLE_STOP_MS) await live.runner.close().catch(() => {});
+    }
+  }
+
+  /** Starts the agent again without a message, resuming its previous context. */
+  resume(id: string): Session {
+    this.ensureRunner(id);
+    return this.patch(id, { archived: false }) ?? this.get(id);
+  }
 
   append(sessionId: string, fields: Omit<Message, 'id' | 'sessionId' | 'seq' | 'time'>): Message {
     const message: Message = { id: newId(), sessionId, seq: this.store.nextSeq(sessionId), time: Date.now(), ...fields };
@@ -392,6 +416,7 @@ export class SessionManager {
   }
 
   async shutdown() {
+    clearInterval(this.sweeper);
     await Promise.all([...this.live.values()].map((l) => l.runner?.close()));
   }
 }

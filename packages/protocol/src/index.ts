@@ -173,6 +173,8 @@ export interface RpcMethods {
   'sessions.send': [{ id: string; text: string }, { ok: true }];
   'sessions.interrupt': [{ id: string }, { ok: true }];
   'sessions.stop': [{ id: string }, { ok: true }];
+  /** starts the agent again (resuming its context) and unarchives the session */
+  'sessions.resume': [{ id: string }, Session];
   'sessions.setMode': [{ id: string; mode: PermissionMode }, Session];
   /** `null` goes back to the agent's default model */
   'sessions.setModel': [{ id: string; model: string | null }, Session];
@@ -236,6 +238,7 @@ export const REMOTE_METHODS: ReadonlySet<RpcMethod> = new Set<RpcMethod>([
   'sessions.send',
   'sessions.interrupt',
   'sessions.stop',
+  'sessions.resume',
   'sessions.setMode',
   'sessions.setModel',
   'agents.models',

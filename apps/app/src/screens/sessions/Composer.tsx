@@ -7,7 +7,7 @@ import { haptic, kvGet, kvSet, openSession, rpc } from '../../shared/host';
 import { C } from '../../shared/theme';
 import { AgentAvatar } from '../../ui/agent';
 import { FolderPicker } from '../../ui/FolderPicker';
-import { ActionSheet, Icon, Pressable, Spinner } from '../../ui/kit';
+import { ActionSheet, Button, Icon, IconButton, Pressable, Spinner } from '../../ui/kit';
 import './composer.css';
 
 type T = (key: MessageKey, vars?: Vars) => string;
@@ -149,9 +149,10 @@ export function HomeComposer({ t, lang, safeBottom, onError }: { t: T; lang: 'en
         <view className="scrim" bindtap={() => setSheet(null)}>
           <view className="sheet" catchtap={() => {}} style={{ padding: '8px 16px 20px 16px' }}>
             <view className="sheet-handle" />
-            <text className="t-headline" style={{ marginBottom: '12px' }}>
-              {t('new.folder')}
-            </text>
+            <view className="row" style={{ marginBottom: '12px' }}>
+              <text className="t-headline grow">{t('new.folder')}</text>
+              <IconButton name="closeLine" onTap={() => setSheet(null)} />
+            </view>
             <FolderPicker
               cwd={cwd}
               t={t}
@@ -160,6 +161,13 @@ export function HomeComposer({ t, lang, safeBottom, onError }: { t: T; lang: 'en
                 setCwd(p);
                 kvSet('home.cwd', p);
               }}
+            />
+            <Button
+              label={cwd ? `${t('new.useThis')}: ${projectName(cwd)}` : t('new.noFolder')}
+              icon="check"
+              disabled={!cwd}
+              style={{ marginTop: '14px' }}
+              onTap={() => setSheet(null)}
             />
           </view>
         </view>

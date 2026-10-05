@@ -69,6 +69,8 @@ ${c.bold(t('cli.usage'))}
   ${c.brand('reilai send')} ${c.dim('<id> <text>')}        send a message without attaching
   ${c.brand('reilai new')} ${c.dim('<agent> [--cwd dir] [--mode ask|edits|plan|yolo] [--model id] [prompt]')}
   ${c.brand('reilai models')} ${c.dim('<agent>')}           models you can pick (--model / /model)
+  ${c.brand('reilai end')} ${c.dim('<id>')}                stop the agent (frees its memory)
+  ${c.brand('reilai resume')} ${c.dim('<id>')}             start it again with its context and attach
   ${c.brand('reilai rm')} ${c.dim('<id>')}                 delete a session
 
   ${c.brand('reilai up')} / ${c.brand('down')}              daemon + web + tunnel
@@ -290,6 +292,21 @@ async function main() {
       const id = await resolveId(client, rest[0]);
       await client.call('sessions.send', { id, text: rest.slice(1).join(' ') });
       ok('sent');
+      client.close();
+      return;
+    }
+    case 'end': {
+      const client = await daemonClient();
+      await client.call('sessions.stop', { id: await resolveId(client, rest[0]) });
+      ok('stopped');
+      client.close();
+      return;
+    }
+    case 'resume': {
+      const client = await daemonClient();
+      const id = await resolveId(client, rest[0]);
+      await client.call('sessions.resume', { id });
+      await attach(client, id);
       client.close();
       return;
     }

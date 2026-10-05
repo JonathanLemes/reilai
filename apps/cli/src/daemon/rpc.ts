@@ -99,6 +99,7 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
       await sessions.stop(requireString(p.id, 'id'));
       return { ok: true };
     },
+    'sessions.resume': (p) => sessions.resume(requireString(p.id, 'id')),
     'sessions.setMode': (p) => {
       if (!PERMISSION_MODES.includes(p.mode)) throw new RpcError('bad_request', 'Unknown mode');
       return sessions.setMode(requireString(p.id, 'id'), p.mode);

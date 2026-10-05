@@ -38,6 +38,12 @@ Both are normalized into one message model (`packages/protocol`): `text`, `think
 `permission` and `event`, with four portable permission modes (`ask`, `edits`, `plan`, `yolo`).
 Sessions resume after a daemon restart through the Claude session id or Codex thread id.
 
+Lifecycle: `idle` means the agent process is alive and waiting; `stopped` means there is no
+process (stopped by the user, archived, after a daemon restart, or after `REILAI_IDLE_STOP_MINUTES`
+of inactivity, 15 by default). Stopping aborts the Claude SDK query (killing the `claude`
+process) or terminates `codex app-server`. `sessions.resume` or any new message starts it again
+with its previous context.
+
 ## Frontend
 
 One Lynx (ReactLynx) project, `apps/app`, one bundle per screen: `sessions`, `chat`, `new`,

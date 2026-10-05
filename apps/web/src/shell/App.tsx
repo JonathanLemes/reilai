@@ -21,6 +21,43 @@ function useLayoutMode(): 'mobile' | 'desktop' {
   return desktop ? 'desktop' : 'mobile';
 }
 
+/**
+ * Mobile keyboard: the app takes the visible height and the tab bar hides behind
+ * the keyboard, so the focused field sits right above it (browser and PWA).
+ * Uses the tallest height seen as reference, which works whether the browser
+ * resizes the layout (interactive-widget=resizes-content) or only the visual viewport.
+ */
+function useKeyboardOpen(enabled: boolean) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!enabled || !vv) return;
+    let tallest = vv.height;
+    const update = () => {
+      tallest = Math.max(tallest, vv.height);
+      const isOpen = tallest - vv.height > 140;
+      setOpen(isOpen);
+      document.documentElement.style.setProperty('--app-height', `${Math.round(vv.height)}px`);
+      if (isOpen && window.scrollY) window.scrollTo(0, 0);
+    };
+    const reset = () => {
+      tallest = 0;
+      setTimeout(update, 300);
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    window.addEventListener('orientationchange', reset);
+    update();
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      window.removeEventListener('orientationchange', reset);
+      document.documentElement.style.removeProperty('--app-height');
+    };
+  }, [enabled]);
+  return open;
+}
+
 function useLang(): Language {
   const [lang, setLang] = useState(currentLang());
   useEffect(() => onLangChange(setLang), []);
@@ -53,6 +90,7 @@ function initialRoute(): { selected: string | null; tab: Tab } {
 
 export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void }) {
   const layout = useLayoutMode();
+  const keyboardOpen = useKeyboardOpen(layout === 'mobile');
   const lang = useLang();
   useThemeTick();
   const t = (key: MessageKey) => translate(lang, key);
@@ -206,7 +244,7 @@ export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void
           </div>
         ))}
       </div>
-      {!stack.length && (
+      {!stack.length && !keyboardOpen && (
         <nav className="tabbar">
           {tabs.map((tb) => (
             <button key={tb.id} type="button" className={`tab${tab === tb.id ? ' on' : ''}`} onClick={() => nav.selectTab(tb.id)}>

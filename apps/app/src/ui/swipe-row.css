@@ -1,0 +1,15 @@
+.swipe { position: relative; overflow: hidden; }
+.swipe-action {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  right: 10px;
+  width: 84px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.swipe-content { position: relative; background-color: var(--bg); }
+.swipe-shield { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }

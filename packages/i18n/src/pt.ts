@@ -62,6 +62,10 @@ export const pt: Dictionary = {
   'files.lines': '{n} linhas',
   'chat.menu.files': 'Arquivos do projeto',
   'sessions.archivedToast': 'Sessão arquivada e encerrada',
+  'sessions.archiveRunning': 'Esta sessão ainda está em execução. Arquivar vai encerrá-la.',
+  'sessions.archiveAnyway': 'Arquivar e encerrar',
+  'chat.menu.resume': 'Retomar',
+  'chat.resume': 'Retomar sessão',
   'sessions.actions': 'Ações da sessão',
 
   'conn.connected': 'Conectado',
@@ -112,7 +116,7 @@ export const pt: Dictionary = {
   'chat.menu.delete': 'Apagar sessão',
   'chat.deleteConfirm': 'Apagar esta sessão e o histórico?',
   'chat.renamePrompt': 'Nome da sessão',
-  'chat.stopped': 'O agente está encerrado. Envie uma mensagem para retomar.',
+  'chat.stopped': 'O agente está encerrado e não usa memória. Retome ou apenas envie uma mensagem.',
   'chat.select': 'Escolha uma sessão',
   'chat.selectBody': 'Escolha uma sessão ao lado ou inicie uma nova.',
 

@@ -36,6 +36,8 @@ export class ClaudeRunner implements AgentRunner {
   private openThinking = new Map<string, string[]>();
   private counter = 0;
   private closed = false;
+  /** aborting kills the claude process (close() alone only ends the input stream) */
+  private readonly abort = new AbortController();
 
   constructor(
     private readonly host: RunnerHost,
@@ -69,6 +71,7 @@ export class ClaudeRunner implements AgentRunner {
         systemPrompt: { type: 'preset', preset: 'claude_code' },
         pathToClaudeCodeExecutable: process.env.REILAI_CLAUDE_PATH ?? Bun.which('claude') ?? undefined,
         canUseTool,
+        abortController: this.abort,
         env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: 'sdk-ts' } as Record<string, string>,
       },
     });
@@ -187,9 +190,10 @@ export class ClaudeRunner implements AgentRunner {
   async close() {
     this.input.end();
     try {
-      this.q.close?.();
+      this.q.close();
     } catch {
       // already gone
     }
+    this.abort.abort();
   }
 }

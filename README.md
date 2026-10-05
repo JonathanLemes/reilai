@@ -52,8 +52,12 @@ self-hosted remote control for **Claude Code** and **Codex**, inspired by
   (agent, model, folder browser where one tap opens and selects a folder, permissions).
 - Open files and images from a session: project file browser, "Open file" on tool calls, tappable
   paths in replies, code with line numbers, rendered Markdown and image preview.
-- Interrupt, stop, resume after restarts, rename, archive (which also stops the agent) and delete,
-  from the chat menu, a long press on a session or the desktop row button.
+- Session menu on a long press (mobile and PWA) or the row buttons (desktop), with the same options
+  as the chat menu; swipe a session left to reveal **Archive**, like Happy. Archiving stops the
+  agent (you get a warning if it is still working).
+- Light on memory: idle agents stop after 15 minutes (`REILAI_IDLE_STOP_MINUTES`) and stopped
+  sessions are shown faded. **Resume** (or just sending a message) restarts the agent with its
+  previous context and unarchives the session.
 - Light, dark or system theme. Desktop layout with a sessions sidebar, mobile layout with a
   native-feeling tab bar. Installable as a PWA.
 - Native Android app built with [Lynx](https://lynxjs.org): native bottom navigation, the
@@ -138,6 +142,8 @@ encrypted tunnel. To reach the computer outside your network, run `reilai relay`
 | `reilai send <id> <text>` | Send a message without attaching |
 | `reilai new <agent> [--cwd dir] [--mode ask\|edits\|plan\|yolo] [--model id] [prompt]` | Create a session |
 | `reilai models <agent>` | Models you can pick (`--model`, `/model <id>` while attached) |
+| `reilai end <id>` | Stop the agent (frees its memory) |
+| `reilai resume <id>` | Start it again with its context, unarchive and attach |
 | `reilai rm <id>` | Delete a session |
 | `reilai up` / `reilai down` | Start / stop daemon, tunnel and web |
 | `reilai start` / `stop` / `status` | The daemon only |

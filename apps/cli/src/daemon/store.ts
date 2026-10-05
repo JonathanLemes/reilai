@@ -91,7 +91,7 @@ export class Store {
 
   /** After a restart no agent process is alive. */
   recoverAfterRestart() {
-    this.db.run(`UPDATE sessions SET status = 'stopped' WHERE status IN ('starting', 'running', 'waiting')`);
+    this.db.run(`UPDATE sessions SET status = 'stopped' WHERE status IN ('starting', 'running', 'waiting', 'idle')`);
     this.db.run(
       `UPDATE messages SET data = json_set(data, '$.permission.status', 'expired') WHERE json_extract(data, '$.permission.status') = 'pending'`,
     );

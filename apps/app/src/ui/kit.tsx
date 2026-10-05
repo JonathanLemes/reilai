@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useState } from '@lynx-js/react';
+import { type ReactNode, useEffect, useRef, useState } from '@lynx-js/react';
 import { iconMarkup, logoMarkup, type SolarIconName } from '@reilai/brand';
 
 import { C } from '../shared/theme';
@@ -22,6 +22,9 @@ export function Logo({ size = 28, color }: { size?: number; color?: string }) {
 }
 
 /** Touchable area with a pressed state. */
+const LONG_PRESS_MS = 480;
+
+/** Touchable area with a pressed state and an optional long press (own timer: same on web and native). */
 export function Pressable({
   onTap,
   onLongPress,
@@ -41,25 +44,51 @@ export function Pressable({
 }) {
   const [pressed, setPressed] = useState(false);
   const longPressed = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const origin = useRef({ x: 0, y: 0 });
+
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+
+  type Touch = { touches?: { clientX: number; clientY: number }[]; detail?: { x?: number; y?: number } };
+  const point = (e: Touch) => ({ x: e.touches?.[0]?.clientX ?? e.detail?.x ?? 0, y: e.touches?.[0]?.clientY ?? e.detail?.y ?? 0 });
+
   return (
     <view
       className={`${className ?? ''}${pressed && pressedClassName ? ` ${pressedClassName}` : ''}`}
       style={style}
-      bindtouchstart={() => {
+      bindtouchstart={(e: Touch) => {
         longPressed.current = false;
-        if (!disabled) setPressed(true);
+        if (disabled) return;
+        setPressed(true);
+        origin.current = point(e);
+        if (onLongPress) {
+          cancel();
+          timer.current = setTimeout(() => {
+            timer.current = null;
+            longPressed.current = true;
+            setPressed(false);
+            onLongPress();
+          }, LONG_PRESS_MS);
+        }
       }}
-      bindtouchend={() => setPressed(false)}
-      bindtouchcancel={() => setPressed(false)}
-      bindlongpress={
-        onLongPress
-          ? () => {
-              longPressed.current = true;
-              setPressed(false);
-              onLongPress();
-            }
-          : undefined
-      }
+      bindtouchmove={(e: Touch) => {
+        const p = point(e);
+        if (Math.abs(p.x - origin.current.x) > 10 || Math.abs(p.y - origin.current.y) > 10) {
+          cancel();
+          setPressed(false);
+        }
+      }}
+      bindtouchend={() => {
+        cancel();
+        setPressed(false);
+      }}
+      bindtouchcancel={() => {
+        cancel();
+        setPressed(false);
+      }}
       bindtap={() => {
         if (longPressed.current) return;
         if (!disabled) onTap?.();
@@ -308,9 +337,14 @@ export function ActionSheet({
   title?: string;
   actions: { label: string; subtitle?: string; icon?: SolarIconName; danger?: boolean; onTap: () => void }[];
 }) {
+  // the finger that long-pressed lifts right after the sheet opens: ignore that tap
+  const openedAt = useRef(0);
+  useEffect(() => {
+    if (open) openedAt.current = Date.now();
+  }, [open]);
   if (!open) return null;
   return (
-    <view className="scrim" bindtap={onClose}>
+    <view className="scrim" bindtap={() => Date.now() - openedAt.current > 400 && onClose()}>
       <view className="sheet" catchtap={() => {}}>
         <view className="sheet-handle" />
         {!!title && (

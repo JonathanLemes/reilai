@@ -69,6 +69,10 @@ export const en = {
   'files.lines': '{n} lines',
   'chat.menu.files': 'Project files',
   'sessions.archivedToast': 'Session archived and stopped',
+  'sessions.archiveRunning': 'This session is still running. Archiving stops it.',
+  'sessions.archiveAnyway': 'Archive and stop',
+  'chat.menu.resume': 'Resume',
+  'chat.resume': 'Resume session',
   'sessions.actions': 'Session actions',
 
   // connection
@@ -123,7 +127,7 @@ export const en = {
   'chat.menu.delete': 'Delete session',
   'chat.deleteConfirm': 'Delete this session and its history?',
   'chat.renamePrompt': 'Session name',
-  'chat.stopped': 'The agent is stopped. Send a message to resume it.',
+  'chat.stopped': 'The agent is stopped and uses no memory. Resume it or just send a message.',
   'chat.select': 'Select a session',
   'chat.selectBody': 'Pick a session on the left or start a new one.',
 

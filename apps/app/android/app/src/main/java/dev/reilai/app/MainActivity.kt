@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private var gate: LynxScreen? = null
     private var modal: BottomSheetDialog? = null
     private var tabsReady = false
+    private var keyboardOpen = false
 
     private val backCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() = pop()
@@ -83,6 +84,12 @@ class MainActivity : AppCompatActivity() {
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            // the tab bar stays behind the keyboard: the focused field sits right above it
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            if (imeVisible != keyboardOpen) {
+                keyboardOpen = imeVisible
+                updateChrome()
+            }
             WindowInsetsCompat.CONSUMED
         }
         setContentView(root)
@@ -236,7 +243,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateChrome() {
         val stack = stacks[currentTab]
         backCallback.isEnabled = (stack?.size ?: 0) > 1
-        tabBar.isVisible = tabsReady && stack?.lastOrNull()?.hidesTabs != true
+        tabBar.isVisible = tabsReady && !keyboardOpen && stack?.lastOrNull()?.hidesTabs != true
     }
 
     // ------------------------------------------------------------------ events & theme
