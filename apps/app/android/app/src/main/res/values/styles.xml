@@ -1,0 +1,10 @@
+<resources>
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/reil_primary</item>
+        <item name="android:windowBackground">@color/reil_bg</item>
+        <item name="bottomNavigationStyle">@style/Widget.Reil.BottomNavigation</item>
+    </style>
+    <style name="Widget.Reil.BottomNavigation" parent="Widget.Material3.BottomNavigationView">
+        <item name="android:minHeight">64dp</item>
+    </style>
+</resources>

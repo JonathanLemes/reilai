@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">ReilAI</string>
+    <string name="tab_sessions">Sessions</string>
+    <string name="tab_new">New</string>
+    <string name="tab_settings">Settings</string>
+</resources>

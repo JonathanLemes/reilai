@@ -1,0 +1,76 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'dev.reilai.app'
+    compileSdk 36
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    defaultConfig {
+        applicationId 'dev.reilai.app'
+        minSdk 24
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0'
+        // Phones are ARM; servalsvg (Lynx <svg>) ships no x86_64 build. x86_64 emulators
+        // with ARM translation still run this APK.
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.core:core-ktx:1.17.0'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation 'com.google.android.material:material:1.13.0'
+    // X25519 + HKDF for the tunnel handshake (AES-GCM comes from the platform JCE)
+    implementation 'com.google.crypto.tink:tink-android:1.15.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    implementation 'org.lynxsdk.lynx:lynx:4.1.0'
+    implementation 'org.lynxsdk.lynx:lynx-jssdk:4.1.0'
+    implementation 'org.lynxsdk.lynx:lynx-trace:4.1.0'
+    implementation 'org.lynxsdk.lynx:primjs:4.1.1'
+    implementation 'org.lynxsdk.lynx:lynx-service-image:4.1.0'
+    implementation 'org.lynxsdk.lynx:lynx-service-log:4.1.0'
+    implementation 'org.lynxsdk.lynx:lynx-service-http:4.1.0'
+    implementation 'org.lynxsdk.lynx:xelement:4.1.0'
+    implementation 'org.lynxsdk.lynx:xelement-input:4.1.0'
+    implementation 'org.lynxsdk.lynx:xelement-svg:4.1.0'
+    implementation 'org.lynxsdk.lynx:servalsvg:0.0.1-alpha.3'
+    implementation 'com.facebook.fresco:fresco:2.3.0'
+
+    testImplementation 'junit:junit:4.13.2'
+}
+
+// The Lynx bundles and generated resources come from the JS side of the repo.
+tasks.register('syncLynxBundles', Copy) {
+    from('../../dist') {
+        include('*.lynx.bundle')
+    }
+    into('src/main/assets')
+}
+
+tasks.register('generateAndroidResources', Exec) {
+    workingDir '../..'
+    commandLine 'bun', 'scripts/android-resources.ts'
+}
+
+tasks.named('preBuild').configure {
+    dependsOn('syncLynxBundles')
+    dependsOn('generateAndroidResources')
+}

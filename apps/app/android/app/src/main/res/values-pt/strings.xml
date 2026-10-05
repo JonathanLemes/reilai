@@ -1,0 +1,5 @@
+<resources>
+    <string name="tab_sessions">Sessões</string>
+    <string name="tab_new">Nova</string>
+    <string name="tab_settings">Ajustes</string>
+</resources>
