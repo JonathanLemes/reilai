@@ -260,6 +260,8 @@ export function Chat() {
               className="composer-input"
               placeholder={t('chat.placeholder', { agent: agentName })}
               maxlines={8}
+              enter-send
+              bindconfirm={() => !sending && void send()}
               bindinput={(e: { detail: { value: string } }) => setDraft(e.detail.value)}
             />
             {running && !draft.trim() ? (

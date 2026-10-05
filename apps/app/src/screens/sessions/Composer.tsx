@@ -151,6 +151,8 @@ export function HomeComposer({
             className="hc-input"
             placeholder={t('composer.placeholder', { agent: AGENT_NAME[agent] })}
             maxlines={6}
+            enter-send
+            bindconfirm={() => !sending && void send()}
             bindfocus={() => setExpanded(true)}
             bindinput={(e: { detail: { value: string } }) => setText(e.detail.value)}
           />

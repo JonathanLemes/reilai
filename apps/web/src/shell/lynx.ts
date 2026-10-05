@@ -228,6 +228,22 @@ const POINTER_RULES = [
   '@media (hover: hover) and (pointer: fine) { .hov { cursor: pointer; transition: box-shadow 120ms ease; } .hov:hover { box-shadow: inset 0 0 0 999px var(--hover); } }',
 ];
 
+/**
+ * Enter sends, Shift+Enter breaks the line, in textareas marked `enter-send` (composers).
+ * Only with a physical keyboard: on touch screens Enter keeps inserting a new line.
+ * The x-textarea form submit reaches the screen as `bindconfirm`.
+ */
+function enterToSend(event: KeyboardEvent) {
+  if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  const target = event.composedPath()[0];
+  if (!(target instanceof HTMLTextAreaElement)) return;
+  const host = (target.getRootNode() as ShadowRoot).host;
+  if (!host?.hasAttribute('enter-send')) return;
+  event.preventDefault();
+  target.form?.dispatchEvent(new SubmitEvent('submit'));
+}
+
 export function createLynx(
   container: HTMLElement,
   screen: string,
@@ -246,6 +262,7 @@ export function createLynx(
     if (moduleName !== 'ReilHost') return undefined;
     return handleCall(name, (data ?? {}) as Data, nav());
   };
+  view.addEventListener('keydown', enterToSend, true);
   view.url = `/bundles/${screen}.web.bundle`;
   container.append(view);
   allViews.add(view);
