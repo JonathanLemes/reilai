@@ -41,7 +41,9 @@ self-hosted remote control for **Claude Code** and **Codex**, inspired by
   with full input/output on tap.
 - Permission cards: **Allow**, **Always allow** (for the session) or **Deny**, from any device.
 - Four portable permission modes for both agents: `Ask`, `Auto edits`, `Plan`, `Yolo`.
-- New session flow: pick the agent, browse folders on your computer (recent folders first),
+- Model picker right next to the mode, fed by each agent's live catalog (Claude Agent SDK
+  `supportedModels()`, Codex `model/list`). Claude switches mid-session; Codex from the next turn.
+- New session flow: pick the agent and model, browse folders on your computer (recent folders first),
   choose the mode and send the first message.
 - Interrupt, stop, resume after restarts, rename, archive and delete.
 - Light, dark or system theme. Desktop layout with a sessions sidebar, mobile layout with a
@@ -114,9 +116,10 @@ encrypted tunnel. To reach the computer outside your network, run `reilai relay`
 | --- | --- |
 | `reilai claude [prompt]` / `reilai codex [prompt]` | New session in the current folder, attached |
 | `reilai ls [--archived]` | List sessions |
-| `reilai attach <id>` | Follow and drive a session (approve with `y`/`a`/`n`, `/stop`, `/mode plan`, `/exit`) |
+| `reilai attach <id>` | Follow and drive a session (approve with `y`/`a`/`n`, `/stop`, `/mode plan`, `/model sonnet`, `/exit`) |
 | `reilai send <id> <text>` | Send a message without attaching |
-| `reilai new <agent> [--cwd dir] [--mode ask\|edits\|plan\|yolo] [prompt]` | Create a session |
+| `reilai new <agent> [--cwd dir] [--mode ask\|edits\|plan\|yolo] [--model id] [prompt]` | Create a session |
+| `reilai models <agent>` | Models you can pick (`--model`, `/model <id>` while attached) |
 | `reilai rm <id>` | Delete a session |
 | `reilai up` / `reilai down` | Start / stop daemon, tunnel and web |
 | `reilai start` / `stop` / `status` | The daemon only |
