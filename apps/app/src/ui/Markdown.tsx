@@ -10,7 +10,12 @@ export function preserveIndent(code: string) {
   return code.replace(/\t/g, '  ').replace(/^ +/gm, (m) => '\u00a0'.repeat(m.length));
 }
 
-function Inlines({ items }: { items: Inline[] }) {
+/** Inline code that looks like a file path (`src/app.ts`, `README.md`) can be opened. */
+export function looksLikePath(text: string) {
+  return /^[\w.~@/-]+$/.test(text) && (/\.[A-Za-z0-9]{1,8}$/.test(text) || text.includes('/')) && !/^\d+(\.\d+)*$/.test(text) && !text.startsWith('-');
+}
+
+function Inlines({ items, onOpenPath }: { items: Inline[]; onOpenPath?: (path: string) => void }) {
   return (
     <>
       {items.map((it, i) => {
@@ -28,7 +33,11 @@ function Inlines({ items }: { items: Inline[] }) {
               </text>
             );
           case 'code':
-            return (
+            return onOpenPath && looksLikePath(it.v) ? (
+              <text key={i} className="md-inline-code md-path" bindtap={() => onOpenPath(it.v)}>
+                {it.v}
+              </text>
+            ) : (
               <text key={i} className="md-inline-code">
                 {it.v}
               </text>
@@ -47,7 +56,7 @@ function Inlines({ items }: { items: Inline[] }) {
   );
 }
 
-export function Markdown({ text, color }: { text: string; color?: string }) {
+export function Markdown({ text, color, onOpenPath }: { text: string; color?: string; onOpenPath?: (path: string) => void }) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
   const tint = color ? { color } : undefined;
   return (
@@ -57,13 +66,13 @@ export function Markdown({ text, color }: { text: string; color?: string }) {
           case 'p':
             return (
               <text key={i} className="t-body md-p" style={tint}>
-                <Inlines items={b.inl} />
+                <Inlines items={b.inl} onOpenPath={onOpenPath} />
               </text>
             );
           case 'h':
             return (
               <text key={i} className={`md-h md-h${b.level}`} style={tint}>
-                <Inlines items={b.inl} />
+                <Inlines items={b.inl} onOpenPath={onOpenPath} />
               </text>
             );
           case 'li':
@@ -71,7 +80,7 @@ export function Markdown({ text, color }: { text: string; color?: string }) {
               <view key={i} className="md-li" style={{ paddingLeft: `${b.depth * 16}px` }}>
                 <text className="t-body md-bullet">{b.ordered ? `${b.n}.` : '•'}</text>
                 <text className="t-body grow" style={tint}>
-                  <Inlines items={b.inl} />
+                  <Inlines items={b.inl} onOpenPath={onOpenPath} />
                 </text>
               </view>
             );
@@ -79,7 +88,7 @@ export function Markdown({ text, color }: { text: string; color?: string }) {
             return (
               <view key={i} className="md-quote">
                 <text className="t-body muted">
-                  <Inlines items={b.inl} />
+                  <Inlines items={b.inl} onOpenPath={onOpenPath} />
                 </text>
               </view>
             );

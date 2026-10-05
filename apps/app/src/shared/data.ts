@@ -164,3 +164,10 @@ export function findModel(models: ModelOption[] | null, model: string | null | u
   if (!model) return models.find((m) => m.isDefault) ?? models[0];
   return models.find((m) => m.id === model || m.resolved === model);
 }
+
+/** Compact name for chips: the default option shows the model it points to ("Opus 5.5"). */
+export function shortModelLabel(m: ModelOption | undefined): string | undefined {
+  if (!m) return undefined;
+  if (m.id === 'default' && m.description.includes(' · ')) return m.description.split(' · ')[0];
+  return m.label;
+}

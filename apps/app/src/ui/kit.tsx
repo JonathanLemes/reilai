@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from '@lynx-js/react';
+import { type ReactNode, useRef, useState } from '@lynx-js/react';
 import { iconMarkup, logoMarkup, type SolarIconName } from '@reilai/brand';
 
 import { C } from '../shared/theme';
@@ -24,6 +24,7 @@ export function Logo({ size = 28, color }: { size?: number; color?: string }) {
 /** Touchable area with a pressed state. */
 export function Pressable({
   onTap,
+  onLongPress,
   className,
   pressedClassName,
   style,
@@ -31,6 +32,7 @@ export function Pressable({
   disabled,
 }: {
   onTap?: () => void;
+  onLongPress?: () => void;
   className?: string;
   pressedClassName?: string;
   style?: Record<string, string | number>;
@@ -38,14 +40,30 @@ export function Pressable({
   disabled?: boolean;
 }) {
   const [pressed, setPressed] = useState(false);
+  const longPressed = useRef(false);
   return (
     <view
       className={`${className ?? ''}${pressed && pressedClassName ? ` ${pressedClassName}` : ''}`}
       style={style}
-      bindtouchstart={() => !disabled && setPressed(true)}
+      bindtouchstart={() => {
+        longPressed.current = false;
+        if (!disabled) setPressed(true);
+      }}
       bindtouchend={() => setPressed(false)}
       bindtouchcancel={() => setPressed(false)}
-      bindtap={() => !disabled && onTap?.()}
+      bindlongpress={
+        onLongPress
+          ? () => {
+              longPressed.current = true;
+              setPressed(false);
+              onLongPress();
+            }
+          : undefined
+      }
+      bindtap={() => {
+        if (longPressed.current) return;
+        if (!disabled) onTap?.();
+      }}
     >
       {children}
     </view>

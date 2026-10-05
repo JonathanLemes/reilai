@@ -29,6 +29,15 @@ describe('markdown', () => {
     expect(blocks[5]).toEqual({ t: 'code', lang: 'ts', v: 'const a = 1;' });
   });
 
+  test('wrapped list items continue the item', () => {
+    const blocks = parseMarkdown('- first line\n  continues here\n- second\n\nAfter');
+    expect(blocks).toEqual([
+      { t: 'li', ordered: false, n: 0, depth: 0, inl: [{ t: 'text', v: 'first line continues here' }] },
+      { t: 'li', ordered: false, n: 0, depth: 0, inl: [{ t: 'text', v: 'second' }] },
+      { t: 'p', inl: [{ t: 'text', v: 'After' }] },
+    ]);
+  });
+
   test('unterminated fence keeps the rest as code (streaming)', () => {
     expect(parseMarkdown('```\nline1\nline2')).toEqual([{ t: 'code', lang: '', v: 'line1\nline2' }]);
   });

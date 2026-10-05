@@ -47,9 +47,13 @@ self-hosted remote control for **Claude Code** and **Codex**, inspired by
 - Four portable permission modes for both agents: `Ask`, `Auto edits`, `Plan`, `Yolo`.
 - Model picker right next to the mode, fed by each agent's live catalog (Claude Agent SDK
   `supportedModels()`, Codex `model/list`). Claude switches mid-session; Codex from the next turn.
-- New session flow: pick the agent and model, browse folders on your computer (recent folders first),
-  choose the mode and send the first message.
-- Interrupt, stop, resume after restarts, rename, archive and delete.
+- Happy-style start from the home screen: one text field; focusing it raises the computer, folder
+  and agent rows, with mode and model in the field itself. The New tab keeps the full form
+  (agent, model, folder browser where one tap opens and selects a folder, permissions).
+- Open files and images from a session: project file browser, "Open file" on tool calls, tappable
+  paths in replies, code with line numbers, rendered Markdown and image preview.
+- Interrupt, stop, resume after restarts, rename, archive (which also stops the agent) and delete,
+  from the chat menu, a long press on a session or the desktop row button.
 - Light, dark or system theme. Desktop layout with a sessions sidebar, mobile layout with a
   native-feeling tab bar. Installable as a PWA.
 - Native Android app built with [Lynx](https://lynxjs.org): native bottom navigation, the

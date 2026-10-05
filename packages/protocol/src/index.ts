@@ -145,6 +145,20 @@ export interface DirEntry {
   name: string;
   path: string;
   isGitRepo: boolean;
+  /** only set when files are listed too */
+  isDir?: boolean;
+  size?: number;
+}
+
+export interface FileContent {
+  path: string;
+  name: string;
+  kind: 'text' | 'image' | 'binary';
+  mime: string;
+  size: number;
+  /** text, or a data: URL for images; empty for binary */
+  content: string;
+  truncated: boolean;
 }
 
 /** RPC surface: method → [params, result]. */
@@ -167,7 +181,9 @@ export interface RpcMethods {
   'sessions.archive': [{ id: string; archived: boolean }, Session];
   'sessions.delete': [{ id: string }, { ok: true }];
   'permissions.respond': [{ sessionId: string; requestId: string; decision: PermissionDecision }, { ok: true }];
-  'fs.list': [{ path?: string }, { path: string; parent: string | null; entries: DirEntry[] }];
+  'fs.list': [{ path?: string; files?: boolean }, { path: string; parent: string | null; entries: DirEntry[] }];
+  /** relative paths resolve against `cwd` (the session folder) */
+  'fs.read': [{ path: string; cwd?: string }, FileContent];
   'fs.recent': [Record<string, never>, DirEntry[]];
   'settings.get': [Record<string, never>, Settings];
   'settings.set': [Partial<Settings>, Settings];
@@ -228,6 +244,7 @@ export const REMOTE_METHODS: ReadonlySet<RpcMethod> = new Set<RpcMethod>([
   'sessions.delete',
   'permissions.respond',
   'fs.list',
+  'fs.read',
   'fs.recent',
   'settings.get',
   'settings.set',

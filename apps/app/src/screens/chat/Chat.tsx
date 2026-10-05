@@ -1,7 +1,8 @@
 import { useEffect, useInitData, useInitDataChanged, useRef, useState } from '@lynx-js/react';
+import { translateModelText } from '@reilai/i18n';
 import { type Message, PERMISSION_MODES, type PermissionMode, projectName } from '@reilai/protocol';
 
-import { findModel, useConversation, useModels } from '../../shared/data';
+import { findModel, shortModelLabel, useConversation, useModels } from '../../shared/data';
 import { haptic, pop, rpc } from '../../shared/host';
 import { useConnection, useLanguage, useLayout } from '../../shared/hooks';
 import { C } from '../../shared/theme';
@@ -19,7 +20,7 @@ import {
   Spinner,
   Toast,
 } from '../../ui/kit';
-import { AgentText, EventLine, PermissionCard, Thinking, ToolRow, UserBubble, WorkingIndicator } from './parts';
+import { AgentText, EventLine, openFile, PermissionCard, Thinking, ToolRow, UserBubble, WorkingIndicator } from './parts';
 import './chat.css';
 
 const AGENT_NAME = { claude: 'Claude Code', codex: 'Codex' } as const;
@@ -44,7 +45,7 @@ export function Chat() {
     if (data.id && data.id !== id) setId(data.id);
   });
 
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { desktop, safeTop, safeBottom } = useLayout();
   const conn = useConnection();
   const { session, messages, hasMore, error, loading, loadOlder } = useConversation(id);
@@ -108,14 +109,25 @@ export function Chat() {
 
   const act = (p: Promise<unknown>) => p.catch((e: Error) => flash(e.message));
 
+  const archive = (archived: boolean) => {
+    if (!session) return;
+    act(
+      rpc('sessions.archive', { id: session.id, archived }).then(() => {
+        if (!archived) return;
+        flash(t('sessions.archivedToast'));
+        if (!desktop) setTimeout(pop, 600);
+      }),
+    );
+  };
+
   const renderMessage = (m: Message) => {
     switch (m.kind) {
       case 'text':
-        return m.role === 'user' ? <UserBubble m={m} /> : <AgentText m={m} />;
+        return m.role === 'user' ? <UserBubble m={m} /> : <AgentText m={m} cwd={session?.cwd ?? ''} />;
       case 'thinking':
         return <Thinking m={m} t={t} />;
       case 'tool':
-        return <ToolRow m={m} t={t} />;
+        return <ToolRow m={m} t={t} cwd={session?.cwd ?? ''} />;
       case 'permission':
         return (
           <PermissionCard
@@ -151,7 +163,15 @@ export function Chat() {
             </view>
           )
         }
-        right={session && <IconButton name="more" onTap={() => setMenu(true)} />}
+        right={
+          session && (
+            <view className="row">
+              {desktop && <IconButton name="folderOpen" onTap={() => openFile(session.cwd, session.cwd)} />}
+              {desktop && <IconButton name="archive" onTap={() => archive(!session.archived)} />}
+              <IconButton name="more" onTap={() => setMenu(true)} />
+            </view>
+          )
+        }
       />
       <view className="chat-divider" />
 
@@ -228,7 +248,7 @@ export function Chat() {
             <Pressable className="chip" pressedClassName="chip-on" style={{ marginLeft: '8px', flexShrink: 1 }} onTap={() => setModelSheet(true)}>
               <Icon name="cpu" size={14} color={C.primary} />
               <text className="t-caption" text-maxline="1" style={{ marginLeft: '6px', fontWeight: '600', color: C.text }}>
-                {currentModel?.label ?? session.model ?? t('model.default')}
+                {currentModel ? translateModelText(lang, shortModelLabel(currentModel)) : (session.model ?? t('model.default'))}
               </text>
               <view style={{ marginLeft: '4px' }}>
                 <Icon name="chevronDown" size={12} color={C['text-tertiary']} />
@@ -278,8 +298,8 @@ export function Chat() {
         onClose={() => setModelSheet(false)}
         title={models ? t('model.title') : t('model.loading')}
         actions={(models ?? []).map((m) => ({
-          label: `${m.label}${currentModel?.id === m.id ? '  ✓' : ''}`,
-          subtitle: m.description,
+          label: `${translateModelText(lang, m.label)}${currentModel?.id === m.id ? '  ✓' : ''}`,
+          subtitle: translateModelText(lang, m.description),
           icon: 'cpu' as const,
           onTap: () => session && act(rpc('sessions.setModel', { id: session.id, model: m.isDefault && m.id === 'default' ? null : m.id })),
         }))}
@@ -290,6 +310,7 @@ export function Chat() {
         onClose={() => setMenu(false)}
         title={session?.cwd}
         actions={[
+          { label: t('chat.menu.files'), icon: 'folderOpen', onTap: () => session && openFile(session.cwd, session.cwd) },
           { label: t('common.rename'), icon: 'rename', onTap: () => setRenaming(true) },
           ...(running ? [{ label: t('chat.stop'), icon: 'stop' as const, onTap: () => session && act(rpc('sessions.interrupt', { id: session.id })) }] : []),
           {
@@ -300,7 +321,7 @@ export function Chat() {
           {
             label: session?.archived ? t('chat.menu.unarchive') : t('chat.menu.archive'),
             icon: 'archive',
-            onTap: () => session && act(rpc('sessions.archive', { id: session.id, archived: !session.archived })),
+            onTap: () => session && archive(!session.archived),
           },
           { label: t('chat.menu.delete'), icon: 'trash', danger: true, onTap: () => setConfirmDelete(true) },
         ]}

@@ -40,6 +40,8 @@ export function parseMarkdown(src: string): Block[] {
   const lines = src.replace(/\r\n/g, '\n').split('\n');
   const blocks: Block[] = [];
   let para: string[] = [];
+  /** raw text of the list item still open, so wrapped lines continue it */
+  let liRaw: string | null = null;
   const flush = () => {
     if (para.length) blocks.push({ t: 'p', inl: parseInline(para.join(' ')) });
     para = [];
@@ -52,27 +54,32 @@ export function parseMarkdown(src: string): Block[] {
       const body: string[] = [];
       i++;
       while (i < lines.length && !/^\s*```/.test(lines[i]!)) body.push(lines[i++]!);
+      liRaw = null;
       blocks.push({ t: 'code', lang: fence[1] ?? '', v: body.join('\n') });
       continue;
     }
     if (!line.trim()) {
       flush();
+      liRaw = null;
       continue;
     }
     const h = line.match(/^(#{1,6})\s+(.*)$/);
     if (h) {
       flush();
+      liRaw = null;
       blocks.push({ t: 'h', level: Math.min(h[1]!.length, 3) as 1 | 2 | 3, inl: parseInline(h[2]!) });
       continue;
     }
     if (/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/.test(line)) {
       flush();
+      liRaw = null;
       blocks.push({ t: 'hr' });
       continue;
     }
     const li = line.match(/^(\s*)([-*+]|(\d+)[.)])\s+(.*)$/);
     if (li) {
       flush();
+      liRaw = li[4]!;
       blocks.push({
         t: 'li',
         ordered: !!li[3],
@@ -85,7 +92,14 @@ export function parseMarkdown(src: string): Block[] {
     const q = line.match(/^>\s?(.*)$/);
     if (q) {
       flush();
+      liRaw = null;
       blocks.push({ t: 'quote', inl: parseInline(q[1]!) });
+      continue;
+    }
+    const last = blocks[blocks.length - 1];
+    if (liRaw !== null && last?.t === 'li' && !para.length) {
+      liRaw = `${liRaw} ${line.trim()}`;
+      last.inl = parseInline(liRaw);
       continue;
     }
     para.push(line.trim());

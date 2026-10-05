@@ -3,6 +3,7 @@ import type { Dictionary, MessageKey } from './en';
 import { pt } from './pt';
 
 export type { Dictionary, MessageKey };
+export { translateModelText } from './models';
 export type Language = 'en' | 'pt';
 export type LanguagePref = Language | 'system';
 

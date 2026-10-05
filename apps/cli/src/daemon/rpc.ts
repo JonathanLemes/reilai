@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 import { randomToken, safeEqual } from '@reilai/crypto';
 
 import { listModels } from '../agents/models';
+import { readFile } from './files';
 import { machineKey, machineName, VERSION } from '../config';
 import type { Broadcast, SessionManager } from './sessions';
 import type { Store } from './store';
@@ -111,8 +112,10 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
       sessions.get(requireString(p.id, 'id'));
       return sessions.patch(p.id, { title: String(p.title ?? '').trim().slice(0, 120) })!;
     },
-    'sessions.archive': (p) => {
+    'sessions.archive': async (p) => {
       sessions.get(requireString(p.id, 'id'));
+      // archiving also ends the agent process: an archived session is done
+      if (p.archived) await sessions.stop(p.id).catch(() => {});
       return sessions.patch(p.id, { archived: !!p.archived })!;
     },
     'sessions.delete': async (p) => {
@@ -124,6 +127,7 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
       sessions.respond(requireString(p.sessionId, 'sessionId'), requireString(p.requestId, 'requestId'), p.decision);
       return { ok: true };
     },
+    'fs.read': (p) => readFile(requireString(p.path, 'path'), p.cwd),
     'fs.list': (p) => {
       const path = expand(p?.path);
       if (!existsSync(path) || !statSync(path).isDirectory()) throw new RpcError('not_found', `Not a folder: ${path}`);
@@ -133,19 +137,22 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
       } catch {
         throw new RpcError('forbidden', `Cannot read ${path}`);
       }
+      const withFiles = p?.files === true;
       const entries = names
-        .filter((n) => !n.startsWith('.') && n !== 'node_modules')
-        .map((n) => join(path, n))
-        .filter((full) => {
+        .filter((n) => (withFiles ? n !== '.git' : !n.startsWith('.')) && n !== 'node_modules')
+        .flatMap((n) => {
+          const full = join(path, n);
           try {
-            return statSync(full).isDirectory();
+            const st = statSync(full);
+            if (st.isDirectory()) return [{ ...dirEntry(full), ...(withFiles ? { isDir: true } : {}) }];
+            if (withFiles && st.isFile()) return [{ name: n, path: full, isGitRepo: false, isDir: false, size: st.size }];
           } catch {
-            return false;
+            // unreadable entry
           }
+          return [];
         })
-        .sort((a, b) => a.localeCompare(b))
-        .slice(0, 500)
-        .map(dirEntry);
+        .sort((a, b) => Number(b.isDir ?? true) - Number(a.isDir ?? true) || a.name.localeCompare(b.name))
+        .slice(0, 800);
       const parent = dirname(path);
       return { path, parent: parent === path ? null : parent, entries };
     },

@@ -247,3 +247,4 @@ input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
 .md-hr { height: 1px; background-color: var(--border); margin: 8px 0 12px 0; }
 .md-inline-code { font-family: monospace; color: var(--primary); }
 .md-link { color: var(--primary); text-decoration: underline; }
+.md-path { text-decoration: underline; }

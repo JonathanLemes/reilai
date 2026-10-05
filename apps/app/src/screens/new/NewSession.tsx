@@ -1,46 +1,22 @@
-import { useCallback, useEffect, useInitData, useState } from '@lynx-js/react';
-import { type AgentKind, type DirEntry, PERMISSION_MODES, type PermissionMode } from '@reilai/protocol';
+import { useEffect, useInitData, useState } from '@lynx-js/react';
+import { translateModelText } from '@reilai/i18n';
+import { type AgentKind, PERMISSION_MODES, type PermissionMode } from '@reilai/protocol';
 
 import { findModel, useHello, useModels } from '../../shared/data';
 import { dismiss, kvGet, kvSet, push, rpc, selectTab } from '../../shared/host';
 import { useLanguage, useLayout } from '../../shared/hooks';
 import { C } from '../../shared/theme';
 import { AgentAvatar } from '../../ui/agent';
-import { ActionSheet, Button, Cell, Header, Icon, IconButton, Pressable, Segmented, Spinner, Toast } from '../../ui/kit';
+import { FolderPicker } from '../../ui/FolderPicker';
+import { ActionSheet, Button, Cell, Header, Icon, IconButton, Pressable, Toast } from '../../ui/kit';
 import './new.css';
 
 const MODE_ICON = { ask: 'shieldCheck', edits: 'edit', plan: 'task', yolo: 'bolt' } as const;
 
-function FolderRow({ entry, selected, onTap, onOpen }: { entry: DirEntry; selected: boolean; onTap: () => void; onOpen?: () => void }) {
-  return (
-    <Pressable className={`frow${selected ? ' frow-on' : ''}`} pressedClassName="frow-pressed" onTap={onTap}>
-      <Icon name={entry.isGitRepo ? 'folderCode' : 'folder'} size={20} color={selected ? C.primary : C['text-secondary']} />
-      <view className="col grow" style={{ marginLeft: '10px', minWidth: '0px' }}>
-        <text className="t-body" text-maxline="1" style={selected ? { color: C.primary, fontWeight: '600' } : undefined}>
-          {entry.name}
-        </text>
-        <text className="t-caption" text-maxline="1">
-          {entry.path}
-        </text>
-      </view>
-      {entry.isGitRepo && (
-        <view className="pill" style={{ backgroundColor: C['surface-2'], marginRight: '6px' }}>
-          <text className="t-caption">git</text>
-        </view>
-      )}
-      {onOpen && (
-        <view bindtap={onOpen} style={{ padding: '6px' }} catchtap={onOpen}>
-          <Icon name="chevronRight" size={18} color={C['text-tertiary']} />
-        </view>
-      )}
-    </Pressable>
-  );
-}
-
 export function NewSession() {
   const init = useInitData();
   const asTab = init.asTab === true;
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { safeTop, safeBottom, desktop } = useLayout();
   const hello = useHello();
   const [agent, setAgent] = useState<AgentKind>('claude');
@@ -50,10 +26,6 @@ export function NewSession() {
   const models = useModels(agent);
   const selectedModel = findModel(models, model);
   const [cwd, setCwd] = useState('');
-  const [tab, setTab] = useState<'recent' | 'browse'>('recent');
-  const [recent, setRecent] = useState<DirEntry[] | null>(null);
-  const [browse, setBrowse] = useState<{ path: string; parent: string | null; entries: DirEntry[] } | null>(null);
-  const [prompt, setPrompt] = useState('');
   const [starting, setStarting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -64,25 +36,12 @@ export function NewSession() {
 
   useEffect(() => {
     rpc('fs.recent', {})
-      .then((list) => {
-        setRecent(list);
-        if (list[0]) setCwd((c) => c || list[0]!.path);
-        if (!list.length) setTab('browse');
-      })
-      .catch(() => setRecent([]));
+      .then((list) => list[0] && setCwd((c) => c || list[0]!.path))
+      .catch(() => {});
     kvGet('new.agent').then((v) => (v === 'claude' || v === 'codex') && setAgent(v));
     kvGet('new.mode').then((v) => v && PERMISSION_MODES.includes(v as PermissionMode) && setMode(v as PermissionMode));
   }, []);
 
-  const openDir = useCallback((path?: string) => {
-    rpc('fs.list', { path })
-      .then(setBrowse)
-      .catch((e: Error) => flash(e.message));
-  }, []);
-
-  useEffect(() => {
-    if (tab === 'browse' && !browse) openDir(cwd || undefined);
-  }, [tab]);
 
   useEffect(() => {
     if (!hello) return;
@@ -99,11 +58,9 @@ export function NewSession() {
     kvSet('new.agent', agent);
     kvSet('new.mode', mode);
     try {
-      const session = await rpc('sessions.create', { agent, cwd, prompt: prompt.trim() || undefined, mode, model, startedBy: 'app' });
+      const session = await rpc('sessions.create', { agent, cwd, mode, model, startedBy: 'app' });
       if (asTab) {
         selectTab('sessions');
-        lynx.createSelectorQuery().select('#prompt').invoke({ method: 'setValue', params: { value: '' } }).exec();
-        setPrompt('');
       } else dismiss();
       push('chat', { id: session.id });
     } catch (e) {
@@ -159,8 +116,8 @@ export function NewSession() {
         <view className="card" style={{ margin: '0 16px' }}>
           <Cell
             icon="cpu"
-            title={selectedModel?.label ?? (models ? (model ?? t('model.default')) : t('model.loading'))}
-            subtitle={selectedModel?.description}
+            title={selectedModel ? translateModelText(lang, selectedModel.label) : models ? (model ?? t('model.default')) : t('model.loading')}
+            subtitle={translateModelText(lang, selectedModel?.description)}
             chevron
             onTap={() => setModelSheet(true)}
           />
@@ -168,58 +125,7 @@ export function NewSession() {
 
         <text className="t-section group-label">{t('new.folder').toUpperCase()}</text>
         <view style={{ padding: '0 16px' }}>
-          <Segmented
-            value={tab}
-            onChange={setTab}
-            options={[
-              { value: 'recent', label: t('new.recent'), icon: 'history' },
-              { value: 'browse', label: t('new.browse'), icon: 'folderOpen' },
-            ]}
-          />
-          <view className="card" style={{ marginTop: '10px' }}>
-            {tab === 'recent' ? (
-              recent === null ? (
-                <view className="center" style={{ padding: '18px' }}>
-                  <Spinner />
-                </view>
-              ) : (
-                recent.map((e) => <FolderRow key={e.path} entry={e} selected={cwd === e.path} onTap={() => setCwd(e.path)} />)
-              )
-            ) : browse === null ? (
-              <view className="center" style={{ padding: '18px' }}>
-                <Spinner />
-              </view>
-            ) : (
-              <view>
-                <view className="crumb">
-                  {browse.parent && (
-                    <view bindtap={() => openDir(browse.parent!)} style={{ marginRight: '6px' }}>
-                      <Icon name="back" size={18} color={C.primary} />
-                    </view>
-                  )}
-                  <text className="t-caption grow" text-maxline="1">
-                    {browse.path}
-                  </text>
-                  <Button
-                    small
-                    variant={cwd === browse.path ? 'primary' : 'secondary'}
-                    label={t('new.useThis')}
-                    onTap={() => setCwd(browse.path)}
-                  />
-                </view>
-                <scroll-view scroll-orientation="vertical" style={{ maxHeight: '300px' }}>
-                  {browse.entries.length === 0 && (
-                    <text className="t-sub" style={{ padding: '16px' }}>
-                      {t('new.emptyDir')}
-                    </text>
-                  )}
-                  {browse.entries.map((e) => (
-                    <FolderRow key={e.path} entry={e} selected={cwd === e.path} onTap={() => setCwd(e.path)} onOpen={() => openDir(e.path)} />
-                  ))}
-                </scroll-view>
-              </view>
-            )}
-          </view>
+          <FolderPicker cwd={cwd} onChange={setCwd} t={t} />
         </view>
 
         <text className="t-section group-label">{t('new.mode').toUpperCase()}</text>
@@ -238,16 +144,6 @@ export function NewSession() {
           ))}
         </view>
 
-        <text className="t-section group-label">{t('new.prompt').toUpperCase()}</text>
-        <view className="field" style={{ margin: '0 16px', alignItems: 'flex-start' }}>
-          <textarea
-            id="prompt"
-            className="field-area"
-            placeholder={t('new.promptPlaceholder')}
-            maxlines={10}
-            bindinput={(e: { detail: { value: string } }) => setPrompt(e.detail.value)}
-          />
-        </view>
         <view style={{ height: '120px' }} />
       </scroll-view>
 
@@ -271,8 +167,8 @@ export function NewSession() {
         onClose={() => setModelSheet(false)}
         title={models ? t('model.title') : t('model.loading')}
         actions={(models ?? []).map((m) => ({
-          label: `${m.label}${selectedModel?.id === m.id ? '  ✓' : ''}`,
-          subtitle: m.description,
+          label: `${translateModelText(lang, m.label)}${selectedModel?.id === m.id ? '  ✓' : ''}`,
+          subtitle: translateModelText(lang, m.description),
           icon: 'cpu' as const,
           onTap: () => setModel(m.isDefault && m.id === 'default' ? null : m.id),
         }))}

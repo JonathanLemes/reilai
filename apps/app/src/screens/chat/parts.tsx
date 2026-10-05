@@ -3,7 +3,7 @@ import type { SolarIconName } from '@reilai/brand';
 import type { MessageKey, Vars } from '@reilai/i18n';
 import type { AgentKind, Message, PermissionDecision } from '@reilai/protocol';
 
-import { copyText } from '../../shared/host';
+import { copyText, push } from '../../shared/host';
 import { C } from '../../shared/theme';
 import { Button, Icon, Pressable, Spinner } from '../../ui/kit';
 import { Markdown, preserveIndent } from '../../ui/Markdown';
@@ -50,10 +50,22 @@ export function UserBubble({ m }: { m: Message }) {
   );
 }
 
-export function AgentText({ m }: { m: Message }) {
+export function openFile(path: string, cwd: string) {
+  push('file', { path, cwd });
+}
+
+/** File paths a tool call touched (Claude `file_path`, Codex `changes[].path`). */
+function toolPaths(input: unknown): string[] {
+  const i = (input ?? {}) as Record<string, unknown>;
+  const direct = [i.file_path, i.notebook_path].filter((v): v is string => typeof v === 'string');
+  const changes = Array.isArray(i.changes) ? (i.changes as { path?: unknown }[]).map((c) => c.path).filter((v): v is string => typeof v === 'string') : [];
+  return [...new Set([...direct, ...changes])];
+}
+
+export function AgentText({ m, cwd }: { m: Message; cwd: string }) {
   return (
     <view className="atext" bindlongpress={() => copyText(m.text ?? '')}>
-      <Markdown text={m.text ?? ''} />
+      <Markdown text={m.text ?? ''} onOpenPath={(path) => openFile(path, cwd)} />
       {m.streaming && <view className="caret pulse" />}
     </view>
   );
@@ -79,7 +91,7 @@ export function Thinking({ m, t }: { m: Message; t: T }) {
   );
 }
 
-export function ToolRow({ m, t }: { m: Message; t: T }) {
+export function ToolRow({ m, t, cwd }: { m: Message; t: T; cwd: string }) {
   const [open, setOpen] = useState(false);
   const tool = m.tool!;
   const running = tool.status === 'running';
@@ -103,6 +115,15 @@ export function ToolRow({ m, t }: { m: Message; t: T }) {
       </Pressable>
       {open && (
         <view className="tool-body">
+          {toolPaths(tool.input).map((path) => (
+            <Pressable key={path} className="tool-file" pressedClassName="cell-pressed" onTap={() => openFile(path, cwd)}>
+              <Icon name="file" size={15} color={C.primary} />
+              <text className="t-callout grow" text-maxline="1" style={{ marginLeft: '8px', color: C.primary }}>
+                {t('files.open')}: {path.split('/').pop()}
+              </text>
+              <Icon name="chevronRight" size={14} color={C['text-tertiary']} />
+            </Pressable>
+          ))}
           <text className="t-section" style={{ marginBottom: '4px' }}>
             {t('chat.toolInput').toUpperCase()}
           </text>

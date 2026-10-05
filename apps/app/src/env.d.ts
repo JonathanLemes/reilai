@@ -29,6 +29,9 @@ declare module '@lynx-js/react' {
     asTab?: boolean;
     /** pair screen: link from a deep link, or the last error */
     link?: string;
+    /** file viewer: path (absolute or relative to cwd) */
+    path?: string;
+    cwd?: string;
     error?: string;
   }
 }

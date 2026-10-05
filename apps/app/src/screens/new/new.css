@@ -11,18 +11,6 @@
 }
 .agent-card-on { border-color: var(--primary); background-color: var(--primary-soft); }
 .agent-check { position: absolute; top: 12px; right: 12px; }
-.frow { display: flex; flex-direction: row; align-items: center; padding: 10px 14px; }
-.frow-pressed { background-color: var(--surface-pressed); }
-.frow-on { background-color: var(--primary-soft); }
-.crumb {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 8px 10px 8px 14px;
-  border-bottom-width: 1px;
-  border-bottom-style: solid;
-  border-bottom-color: var(--border);
-}
 .radio { width: 22px; height: 22px; border-radius: 11px; border-width: 2px; border-style: solid; border-color: var(--border-strong); display: flex; align-items: center; justify-content: center; }
 .radio-on { border-color: var(--primary); }
 .radio-dot { width: 10px; height: 10px; border-radius: 5px; background-color: var(--primary); }

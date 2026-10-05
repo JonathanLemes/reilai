@@ -76,3 +76,4 @@
 }
 .send-off { background-color: var(--border-strong); }
 .send-stop { background-color: var(--text); }
+.tool-file { display: flex; flex-direction: row; align-items: center; padding: 8px 10px; margin-bottom: 10px; border-radius: 10px; background-color: var(--surface); }

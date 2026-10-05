@@ -60,7 +60,7 @@ export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void
   const [tab, setTab] = useState<Tab>(route.tab);
   const [selected, setSelected] = useState<string | null>(route.selected);
   const [stack, setStack] = useState<StackItem[]>(route.selected ? [{ key: 1, screen: 'chat', params: { id: route.selected } }] : []);
-  const [modal, setModal] = useState<{ screen: string; params: Data } | null>(null);
+  const [modal, setModal] = useState<{ screen: string; params: Data; wide?: boolean } | null>(null);
   const [state, setState] = useState<ConnState>(conn.state);
   const [keySeq, setKeySeq] = useState(10);
 
@@ -96,13 +96,23 @@ export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void
       if (layout === 'mobile') {
         setKeySeq((k) => k + 1);
         setStack((s) => [...s, { key: keySeq + 1, screen, params }]);
+      } else {
+        // desktop: secondary screens (file viewer…) open over the conversation
+        setModal({ screen, params, wide: true });
       }
     },
     pop() {
+      if (modal) {
+        setModal(null);
+        return;
+      }
+      const top = stack[stack.length - 1];
       setStack((s) => s.slice(0, -1));
-      setSelected(null);
-      broadcast('reil:selected', { id: '' });
-      go('/');
+      if (!top || top.screen === 'chat') {
+        setSelected(null);
+        broadcast('reil:selected', { id: '' });
+        go('/');
+      }
     },
     present(screen, params) {
       setModal({ screen, params });
@@ -125,7 +135,7 @@ export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void
 
   const modalView = modal && (
     <div className="modal-scrim" onClick={() => setModal(null)}>
-      <div className={`modal modal-${layout}`} onClick={(e) => e.stopPropagation()}>
+      <div className={`modal modal-${layout}${modal.wide ? ' modal-wide' : ''}`} onClick={(e) => e.stopPropagation()}>
         <LynxView screen={modal.screen} data={modal.params} layout={layout} nav={nav} />
       </div>
     </div>

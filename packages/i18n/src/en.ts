@@ -55,6 +55,22 @@ export const en = {
   'model.title': 'Model',
   'model.default': 'Default',
   'model.loading': 'Loading models…',
+  // home composer
+  'composer.placeholder': 'Ask {agent}',
+  'composer.computer': 'Computer',
+  'composer.pickFolder': 'Choose a folder',
+
+  // files
+  'files.title': 'Files',
+  'files.open': 'Open file',
+  'files.binary': 'Binary file ({size}). No preview available.',
+  'files.truncated': 'Showing the first 1 MB of this file.',
+  'files.empty': 'This folder is empty',
+  'files.lines': '{n} lines',
+  'chat.menu.files': 'Project files',
+  'sessions.archivedToast': 'Session archived and stopped',
+  'sessions.actions': 'Session actions',
+
   // connection
   'conn.connected': 'Connected',
   'conn.connecting': 'Connecting…',
@@ -118,9 +134,8 @@ export const en = {
   'new.recent': 'Recent',
   'new.browse': 'Browse',
   'new.useThis': 'Use this folder',
+  'new.selected': 'Selected',
   'new.mode': 'Permissions',
-  'new.prompt': 'First message',
-  'new.promptPlaceholder': 'What should the agent do? (optional)',
   'new.start': 'Start session',
   'new.starting': 'Starting…',
   'new.noFolder': 'Choose a folder first',

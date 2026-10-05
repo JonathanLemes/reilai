@@ -1,0 +1,36 @@
+.hc-scrim {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--scrim);
+  animation: fade-in 160ms ease-out;
+}
+.hc { position: relative; padding: 8px 12px 10px 12px; }
+.hc-rows { background-color: var(--surface); border-radius: 22px; margin-bottom: 8px; padding: 6px; animation: rise 200ms cubic-bezier(0.2, 0.9, 0.3, 1); }
+.hc-row { display: flex; flex-direction: row; align-items: center; padding: 12px 12px; border-radius: 12px; }
+.hc-row-pressed { background-color: var(--surface-pressed); }
+.hc-box {
+  background-color: var(--surface);
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--border-strong);
+  border-radius: 24px;
+  padding: 10px 10px 8px 16px;
+}
+.hc-box-on { border-color: var(--primary); }
+.hc-input { width: 100%; font-size: 16px; line-height: 22px; color: var(--text); min-height: 30px; max-height: 150px; padding: 4px 0; }
+.hc-chip { display: flex; flex-direction: row; align-items: center; height: 34px; padding: 0 10px; border-radius: 17px; margin-right: 4px; }
+.hc-chip-pressed { background-color: var(--surface-pressed); }
+.hc-send {
+  width: 38px;
+  height: 38px;
+  border-radius: 19px;
+  background-color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+}
+.hc-send-off { background-color: var(--border-strong); }

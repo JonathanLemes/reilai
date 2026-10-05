@@ -1,0 +1,13 @@
+.frow { display: flex; flex-direction: row; align-items: center; padding: 10px 14px; }
+.frow-pressed { background-color: var(--surface-pressed); }
+.frow-on { background-color: var(--primary-soft); }
+.crumb {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 10px 8px 8px;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: var(--border);
+}
+.crumb-back { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 4px; }

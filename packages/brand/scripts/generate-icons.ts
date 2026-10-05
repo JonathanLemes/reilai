@@ -63,6 +63,8 @@ const WANTED: Record<string, string> = {
   play: 'play-bold',
   history: 'history-bold',
   home: 'home-2-bold',
+  image: 'gallery-bold',
+  user: 'user-rounded-bold',
 };
 
 const all = icons as {

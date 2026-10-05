@@ -14,6 +14,7 @@ export default defineConfig({
       new: './src/screens/new/index.tsx',
       settings: './src/screens/settings/index.tsx',
       pair: './src/screens/pair/index.tsx',
+      file: './src/screens/file/index.tsx',
     },
   },
   plugins: [pluginReactLynx()],
