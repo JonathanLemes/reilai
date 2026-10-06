@@ -244,6 +244,29 @@ function enterToSend(event: KeyboardEvent) {
   target.form?.dispatchEvent(new SubmitEvent('submit'));
 }
 
+const MENTION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'Enter', 'Tab', 'Escape']);
+
+/**
+ * While a composer shows `@` suggestions (`mention-open="on"` on its textarea), the
+ * navigation keys go to the screen as `reil:key` instead of moving the caret, sending
+ * or leaving the field. Runs before `enterToSend`.
+ */
+function mentionKeys(event: KeyboardEvent) {
+  if (!MENTION_KEYS.has(event.key) || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+  const target = event.composedPath()[0];
+  if (!(target instanceof HTMLTextAreaElement)) return;
+  const host = (target.getRootNode() as ShadowRoot).host;
+  if (host?.getAttribute('mention-open') !== 'on') return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  (event.currentTarget as LynxViewElement).sendGlobalEvent('reil:key', [{ key: event.key } as never]);
+}
+
+/** Tapping a `keep-focus` element (the suggestion list) must not blur the field and close the keyboard. */
+function keepFocus(event: MouseEvent) {
+  if (event.composedPath().some((el) => el instanceof Element && el.hasAttribute('keep-focus'))) event.preventDefault();
+}
+
 export function createLynx(
   container: HTMLElement,
   screen: string,
@@ -262,7 +285,9 @@ export function createLynx(
     if (moduleName !== 'ReilHost') return undefined;
     return handleCall(name, (data ?? {}) as Data, nav());
   };
+  view.addEventListener('keydown', mentionKeys, true);
   view.addEventListener('keydown', enterToSend, true);
+  view.addEventListener('mousedown', keepFocus, true);
   view.url = `/bundles/${screen}.web.bundle`;
   container.append(view);
   allViews.add(view);

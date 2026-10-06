@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLynxGlobalEventListener, useState } from '@lynx-js/react';
+import { useCallback, useEffect, useLynxGlobalEventListener, useRef, useState } from '@lynx-js/react';
 import type { AgentAvailability, AgentKind, MachineInfo, Message, ModelOption, Session, Settings } from '@reilai/protocol';
 
 import { rpc } from './host';
@@ -90,12 +90,24 @@ export function useConversation(id: string | undefined) {
   }, [load]);
   useOnReconnect(load);
 
-  const loadOlder = useCallback(() => {
-    if (!id || !hasMore || !messages.length) return;
-    rpc('sessions.get', { id, limit: 80, before: messages[0]!.seq }).then((r) => {
-      setMessages((list) => [...r.messages, ...list]);
-      setHasMore(r.hasMore);
-    });
+  // the list fires scrolltoupper repeatedly during a fast fling: one page at a time
+  const loadingOlder = useRef(false);
+  /** Resolves with how many messages were added at the top. */
+  const loadOlder = useCallback((): Promise<number> => {
+    if (!id || !hasMore || !messages.length || loadingOlder.current) return Promise.resolve(0);
+    loadingOlder.current = true;
+    const known = new Set(messages.map((m) => m.id));
+    return rpc('sessions.get', { id, limit: 80, before: messages[0]!.seq })
+      .then((r) => {
+        const older = r.messages.filter((m) => !known.has(m.id));
+        setMessages((list) => [...older, ...list]);
+        setHasMore(r.hasMore);
+        return older.length;
+      })
+      .catch(() => 0)
+      .finally(() => {
+        loadingOlder.current = false;
+      });
   }, [id, hasMore, messages]);
 
   useServerEvent((event, data) => {

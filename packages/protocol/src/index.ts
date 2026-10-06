@@ -141,6 +141,12 @@ export interface ModelOption {
   isDefault?: boolean;
 }
 
+export interface FileMatch {
+  /** relative to the project folder; folders end with `/` */
+  path: string;
+  isDir: boolean;
+}
+
 export interface DirEntry {
   name: string;
   path: string;
@@ -196,6 +202,8 @@ export interface RpcMethods {
   /** relative paths resolve against `cwd` (the session folder) */
   'fs.read': [{ path: string; cwd?: string }, FileContent];
   'fs.recent': [Record<string, never>, DirEntry[]];
+  /** `@` mentions: project files and folders matching `query`, paths relative to `cwd` */
+  'fs.search': [{ cwd: string; query: string; limit?: number }, FileMatch[]];
   'settings.get': [Record<string, never>, Settings];
   'settings.set': [Partial<Settings>, Settings];
   'devices.list': [Record<string, never>, Device[]];
@@ -284,6 +292,7 @@ export const REMOTE_METHODS: ReadonlySet<RpcMethod> = new Set<RpcMethod>([
   'fs.list',
   'fs.read',
   'fs.recent',
+  'fs.search',
   'settings.get',
   'settings.set',
   'devices.list',

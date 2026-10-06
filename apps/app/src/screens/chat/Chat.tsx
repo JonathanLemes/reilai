@@ -7,6 +7,7 @@ import { haptic, pop, rpc } from '../../shared/host';
 import { useConnection, useLanguage, useLayout } from '../../shared/hooks';
 import { C } from '../../shared/theme';
 import { AgentAvatar, StatusDot } from '../../ui/agent';
+import { useMentions } from '../../ui/Mentions';
 import {
   ActionSheet,
   Button,
@@ -25,12 +26,38 @@ import './chat.css';
 const AGENT_NAME = { claude: 'Claude Code', codex: 'Codex' } as const;
 const MODE_ICON = { ask: 'shieldCheck', edits: 'edit', plan: 'task', yolo: 'bolt' } as const;
 
+function scrollToIndex(index: number) {
+  lynx.createSelectorQuery().select('#chat-list').invoke({ method: 'scrollToPosition', params: { index, position: index, alignTo: 'top' } }).exec();
+}
+
 function scrollToEnd(count: number, smooth: boolean) {
   lynx
     .createSelectorQuery()
     .select('#chat-list')
     .invoke({ method: 'scrollToPosition', params: { index: count + 1, position: count + 1, alignTo: 'bottom', smooth } })
     .exec();
+}
+
+/**
+ * Rough height of a row before it renders. Without it the list assumes a whole screen
+ * per row, and rows shrinking to their real size while scrolling up make the content jump.
+ */
+function estimateHeight(m: Message): number {
+  switch (m.kind) {
+    case 'text': {
+      const text = m.text ?? '';
+      const lines = Math.ceil(text.length / (m.role === 'user' ? 32 : 44)) + text.split('\n').length - 1;
+      return 22 + Math.max(1, lines) * 21;
+    }
+    case 'tool':
+      return 46;
+    case 'thinking':
+      return 34;
+    case 'permission':
+      return 170;
+    default:
+      return 40;
+  }
 }
 
 function clearComposer() {
@@ -45,7 +72,7 @@ export function Chat() {
   });
 
   const { t, lang } = useLanguage();
-  const { desktop, safeTop, safeBottom } = useLayout();
+  const { desktop, web, safeTop, safeBottom } = useLayout();
   const conn = useConnection();
   const { session, messages, hasMore, error, loading, loadOlder } = useConversation(id);
   const models = useModels(session?.agent);
@@ -57,6 +84,13 @@ export function Chat() {
   const [toast, setToast] = useState<string | null>(null);
   const scrolledOnce = useRef(false);
   const lastCount = useRef(0);
+  /** follow new content only while the reader is at the bottom (scrolling up detaches) */
+  const pinned = useRef(true);
+  const initialIndex = useRef<number | null>(null);
+  /** older pages only after the first jump to the end (the top is briefly visible while it lands) */
+  const settledAt = useRef(0);
+  const scrollTop = useRef(0);
+  const mentions = useMentions({ inputId: 'composer', cwd: session?.cwd, onChange: setDraft });
 
   const flash = (text: string) => {
     setToast(text);
@@ -69,13 +103,16 @@ export function Chat() {
     onArchived: () => !desktop && setTimeout(pop, 700),
   });
 
-  // follow the conversation: jump on first load, glide on new content
+  // follow the conversation: jump on first load, glide on new content at the end.
+  // Older pages loaded at the top do not change the tail, so they never pull the reader down.
   const tail = messages[messages.length - 1];
-  const tailKey = `${messages.length}:${tail?.id}:${tail?.text?.length ?? 0}:${tail?.tool?.status ?? ''}`;
+  const tailKey = `${tail?.id}:${tail?.text?.length ?? 0}:${tail?.tool?.status ?? ''}:${tail?.permission?.status ?? ''}`;
   useEffect(() => {
     if (!messages.length) return;
+    if (scrolledOnce.current && !pinned.current) return;
     const smooth = scrolledOnce.current && messages.length - lastCount.current < 20;
     const timer = setTimeout(() => scrollToEnd(messages.length, smooth), scrolledOnce.current ? 30 : 80);
+    if (!scrolledOnce.current) settledAt.current = Date.now() + 600;
     scrolledOnce.current = true;
     lastCount.current = messages.length;
     return () => clearTimeout(timer);
@@ -83,6 +120,9 @@ export function Chat() {
 
   useEffect(() => {
     scrolledOnce.current = false;
+    pinned.current = true;
+    initialIndex.current = null;
+    settledAt.current = Number.MAX_SAFE_INTEGER;
   }, [id]);
 
   if (!id) {
@@ -98,6 +138,8 @@ export function Chat() {
     setSending(true);
     setDraft('');
     clearComposer();
+    mentions.reset();
+    pinned.current = true;
     haptic('light');
     try {
       await rpc('sessions.send', { id: session.id, text });
@@ -179,14 +221,29 @@ export function Chat() {
           list-type="single"
           span-count={1}
           scroll-orientation="vertical"
-          initial-scroll-index={messages.length + 1}
+          initial-scroll-index={(initialIndex.current ??= messages.length + 1)}
           upper-threshold-item-count={2}
-          bindscrolltoupper={loadOlder}
+          lower-threshold-item-count={1}
+          scroll-event-throttle={32}
+          bindscrolltoupper={() => {
+            if (Date.now() <= settledAt.current) return;
+            void loadOlder().then((added) => {
+              // a fling that already hit the top would land on the oldest new message: keep the reader's place
+              if (added && scrollTop.current < 80) setTimeout(() => scrollToIndex(added), 0);
+            });
+          }}
+          bindscrolltolower={() => {
+            pinned.current = true;
+          }}
+          bindscroll={(e: { detail: { deltaY: number; scrollTop: number } }) => {
+            scrollTop.current = e.detail.scrollTop;
+            if (e.detail.deltaY < -2) pinned.current = false;
+          }}
         >
           <list-item item-key="intro" key="intro">
             {hasMore ? (
               <view className="center" style={{ padding: '14px' }}>
-                <Button small variant="ghost" label={t('chat.loadOlder')} onTap={loadOlder} />
+                <Button small variant="ghost" label={t('chat.loadOlder')} onTap={() => void loadOlder()} />
               </view>
             ) : (
               session && (
@@ -208,7 +265,8 @@ export function Chat() {
             )}
           </list-item>
           {messages.map((m) => (
-            <list-item item-key={m.id} key={m.id}>
+            // web: rows always laid out (exact scroll height); native: estimates until measured
+            <list-item item-key={m.id} key={m.id} estimated-main-axis-size-px={estimateHeight(m)} recyclable={web ? false : undefined}>
               {renderMessage(m)}
             </list-item>
           ))}
@@ -254,6 +312,7 @@ export function Chat() {
               </text>
             )}
           </view>
+          {mentions.panel}
           <view className="composer-box">
             <textarea
               id="composer"
@@ -261,8 +320,12 @@ export function Chat() {
               placeholder={t('chat.placeholder', { agent: agentName })}
               maxlines={8}
               enter-send
-              bindconfirm={() => !sending && void send()}
-              bindinput={(e: { detail: { value: string } }) => setDraft(e.detail.value)}
+              mention-open={mentions.open ? 'on' : 'off'}
+              bindconfirm={() => !sending && !mentions.open && void send()}
+              bindinput={(e: { detail: { value: string; selectionStart?: number } }) => {
+                setDraft(e.detail.value);
+                mentions.onInput(e.detail);
+              }}
             />
             {running && !draft.trim() ? (
               <Pressable className="send send-stop" onTap={() => act(rpc('sessions.interrupt', { id: session.id }))}>

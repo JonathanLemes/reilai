@@ -17,7 +17,7 @@ import { randomUUID } from 'node:crypto';
 import { randomToken, safeEqual } from '@reilai/crypto';
 
 import { listModels } from '../agents/models';
-import { readFile } from './files';
+import { readFile, searchFiles } from './files';
 import { machineKey, machineName, VERSION } from '../config';
 import type { Broadcast, SessionManager } from './sessions';
 import type { Store } from './store';
@@ -162,6 +162,7 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
       const parent = dirname(path);
       return { path, parent: parent === path ? null : parent, entries };
     },
+    'fs.search': (p) => searchFiles(requireString(p.cwd, 'cwd'), typeof p.query === 'string' ? p.query : '', p.limit),
     'fs.recent': () => store.recentDirs().filter((p) => existsSync(p)).map(dirEntry),
     'settings.get': () => store.getSettings(),
     'settings.set': (p) => {

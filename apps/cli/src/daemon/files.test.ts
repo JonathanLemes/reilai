@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { readFile } from './files';
+import { readFile, scoreMatch, searchFiles } from './files';
 
 describe('fs.read', () => {
   const dir = mkdtempSync(join(tmpdir(), 'reilai-files-'));
@@ -31,5 +31,34 @@ describe('fs.read', () => {
   test('missing files and folders are errors', () => {
     expect(() => readFile('nope.txt', dir)).toThrow('File not found');
     expect(() => readFile(dir)).toThrow('Not a file');
+  });
+});
+
+describe('fs.search', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'reilai-search-'));
+  mkdirSync(join(dir, 'src/screens'), { recursive: true });
+  mkdirSync(join(dir, 'node_modules/pkg'), { recursive: true });
+  writeFileSync(join(dir, 'README.md'), '');
+  writeFileSync(join(dir, 'src/chat.ts'), '');
+  writeFileSync(join(dir, 'src/screens/Chat.tsx'), '');
+  writeFileSync(join(dir, 'node_modules/pkg/chat.js'), '');
+
+  test('empty query lists the top level, folders first', async () => {
+    expect(await searchFiles(dir, '')).toEqual([
+      { path: 'src/', isDir: true },
+      { path: 'README.md', isDir: false },
+    ]);
+  });
+
+  test('ranks name matches first and skips node_modules', async () => {
+    const paths = (await searchFiles(dir, 'chat')).map((m) => m.path);
+    expect(paths).toEqual(['src/chat.ts', 'src/screens/Chat.tsx']);
+    expect((await searchFiles(dir, 'screens')).map((m) => m.path)[0]).toBe('src/screens/');
+    expect((await searchFiles(dir, 'src/')).map((m) => m.path)).toEqual(['src/chat.ts', 'src/screens/', 'src/screens/Chat.tsx']);
+  });
+
+  test('fuzzy subsequences match, unrelated text does not', () => {
+    expect(scoreMatch('src/screens/Chat.tsx', 'scrchat')).toBeGreaterThan(0);
+    expect(scoreMatch('src/screens/Chat.tsx', 'zzz')).toBe(-1);
   });
 });

@@ -8,6 +8,7 @@ import { C } from '../../shared/theme';
 import { AgentAvatar } from '../../ui/agent';
 import { FolderPicker } from '../../ui/FolderPicker';
 import { ActionSheet, Button, Icon, IconButton, Pressable, Spinner } from '../../ui/kit';
+import { useMentions } from '../../ui/Mentions';
 import './composer.css';
 
 type T = (key: MessageKey, vars?: Vars) => string;
@@ -48,6 +49,7 @@ export function HomeComposer({
   const [sending, setSending] = useState(false);
   const models = useModels(agent);
   const currentModel = findModel(models, model);
+  const mentions = useMentions({ inputId: 'home-input', cwd: cwd || undefined, onChange: setText });
 
   useEffect(() => {
     kvGet('new.agent').then((v) => (v === 'claude' || v === 'codex') && setAgent(v));
@@ -63,6 +65,7 @@ export function HomeComposer({
 
   const collapse = () => {
     input('blur');
+    mentions.close();
     setExpanded(false);
     setSheet(null);
   };
@@ -84,6 +87,7 @@ export function HomeComposer({
       const session = await rpc('sessions.create', { agent, cwd, prompt, mode, model, startedBy: 'app' });
       input('setValue', { value: '' });
       setText('');
+      mentions.reset();
       collapse();
       openSession(session.id);
     } catch (e) {
@@ -111,7 +115,7 @@ export function HomeComposer({
     <>
       {expanded && <view className="hc-scrim" bindtap={collapse} />}
       <view className="hc" style={{ paddingBottom: `${10 + safeBottom}px` }}>
-        {expanded && (
+        {expanded && !mentions.open && (
           <view className="hc-rows">
             <view className="hc-row">
               <Icon name="monitor" size={20} color={C.text} />
@@ -145,6 +149,7 @@ export function HomeComposer({
             </view>
           </view>
         )}
+        {mentions.panel}
         <view className={`hc-box${expanded ? ' hc-box-on' : ''}`}>
           <textarea
             id="home-input"
@@ -152,9 +157,13 @@ export function HomeComposer({
             placeholder={t('composer.placeholder', { agent: AGENT_NAME[agent] })}
             maxlines={6}
             enter-send
-            bindconfirm={() => !sending && void send()}
+            mention-open={mentions.open ? 'on' : 'off'}
+            bindconfirm={() => !sending && !mentions.open && void send()}
             bindfocus={() => setExpanded(true)}
-            bindinput={(e: { detail: { value: string } }) => setText(e.detail.value)}
+            bindinput={(e: { detail: { value: string; selectionStart?: number } }) => {
+              setText(e.detail.value);
+              mentions.onInput(e.detail);
+            }}
           />
           <view className="row" style={{ marginTop: '6px' }}>
             <Pressable className="hc-chip" pressedClassName="hc-chip-pressed" onTap={() => openSheet('mode')} style={{ flexShrink: 0 }}>
