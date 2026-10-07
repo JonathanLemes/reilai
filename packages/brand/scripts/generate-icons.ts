@@ -66,6 +66,7 @@ const WANTED: Record<string, string> = {
   home: 'home-2-bold',
   image: 'gallery-bold',
   user: 'user-rounded-bold',
+  timer: 'stopwatch-bold',
 };
 
 const all = icons as {

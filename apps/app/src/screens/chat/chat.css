@@ -46,6 +46,7 @@
 .wdot { width: 7px; height: 7px; border-radius: 4px; background-color: var(--primary); margin-right: 4px; }
 
 .composer {
+  position: relative;
   padding: 10px 12px 10px 12px;
   background-color: var(--bg);
   border-top-width: 1px;
@@ -64,6 +65,8 @@
   padding: 5px 5px 5px 16px;
 }
 .composer-input { flex: 1; font-size: 15px; line-height: 21px; color: var(--text); min-height: 34px; max-height: 180px; padding: 6px 0; }
+/* .composer-input-desk (desktop web): its height comes from the shell, which drags .composer-grip */
+.composer-grip { position: absolute; left: 0; right: 0; top: -4px; height: 9px; }
 .send {
   width: 36px;
   height: 36px;

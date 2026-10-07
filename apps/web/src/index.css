@@ -137,6 +137,34 @@ body.resizing {
 body.resizing lynx-view {
   pointer-events: none;
 }
+body.resizing-v {
+  cursor: row-resize;
+  user-select: none;
+}
+
+/* desktop tooltips (shell/tooltip.ts) */
+.tip {
+  position: fixed;
+  z-index: 50;
+  max-width: 260px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: var(--text);
+  color: var(--text-inverse);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+.tip.on {
+  opacity: 1;
+  transform: none;
+}
 .main {
   flex: 1;
   position: relative;

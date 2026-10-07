@@ -55,6 +55,7 @@ export function Pressable({
   style,
   children,
   disabled,
+  tip,
 }: {
   onTap?: () => void;
   onLongPress?: () => void;
@@ -63,6 +64,8 @@ export function Pressable({
   style?: Record<string, string | number>;
   children?: ReactNode;
   disabled?: boolean;
+  /** desktop tooltip, shown by the web shell on hover */
+  tip?: string;
 }) {
   const [pressed, setPressed] = useState(false);
   const longPressed = useRef(false);
@@ -83,6 +86,7 @@ export function Pressable({
     <view
       className={`${className ?? ''}${onTap && !disabled ? ' hov' : ''}${pressed && pressedClassName ? ` ${pressedClassName}` : ''}`}
       style={style}
+      reil-tip={tip}
       bindtouchstart={(e: Touch) => {
         longPressed.current = false;
         moved.current = false;
@@ -177,9 +181,21 @@ export function Button({
   );
 }
 
-export function IconButton({ name, onTap, color, size = 22 }: { name: SolarIconName; onTap?: () => void; color?: string; size?: number }) {
+export function IconButton({
+  name,
+  onTap,
+  color,
+  size = 22,
+  tip,
+}: {
+  name: SolarIconName;
+  onTap?: () => void;
+  color?: string;
+  size?: number;
+  tip?: string;
+}) {
   return (
-    <Pressable className="header-btn" pressedClassName="header-btn-pressed" onTap={onTap}>
+    <Pressable className="header-btn" pressedClassName="header-btn-pressed" onTap={onTap} tip={tip}>
       <Icon name={name} size={size} color={color ?? C.text} />
     </Pressable>
   );

@@ -219,14 +219,111 @@ function handleCall(name: string, data: Data, nav: Navigator | undefined): unkno
   }
 }
 
-/** Mounts one Lynx screen (`<screen>.web.bundle`) in a container. */
+/**
+ * Code shown in the screens keeps its indentation with no-break spaces (Lynx text
+ * collapses leading spaces): copying a selection turns them back into plain spaces.
+ */
+export function installCopyCleanup() {
+  document.addEventListener('copy', (event) => {
+    const text = document.getSelection()?.toString() ?? '';
+    if (!text.includes('\u00a0') || !event.clipboardData) return;
+    event.clipboardData.setData('text/plain', text.replace(/\u00a0/g, ' '));
+    event.preventDefault();
+  });
+}
+
 /**
  * Mouse affordances for the Lynx screens (Lynx CSS has no :hover nor cursor).
+ * One rule per entry: each goes through `insertRule`, and a bad one blanks the screen.
  * Interactive elements carry the `hov` class (Pressable adds it); touch screens skip it.
  */
 const POINTER_RULES = [
   '@media (hover: hover) and (pointer: fine) { .hov { cursor: pointer; transition: box-shadow 120ms ease; } .hov:hover { box-shadow: inset 0 0 0 999px var(--hover); } }',
+  // x-textarea is display: contents; the real field is its `textarea` part (auto = its natural height)
+  'x-textarea.composer-input-desk::part(textarea) { box-sizing: border-box; height: var(--composer-h, auto); }',
+  '[resize-handle] { cursor: row-resize; }',
+  '[resize-handle]:hover, [resize-handle][resizing] { background: linear-gradient(var(--primary), var(--primary)) center / 100% 3px no-repeat; opacity: 0.6; }',
 ];
+
+// ---------------------------------------------------------------------------
+// Composer height (desktop): dragged by the `resize-handle` edge, like the sidebar
+// ---------------------------------------------------------------------------
+const COMPOSER_KEY = 'reilai:composer-height';
+const COMPOSER_MIN = 40;
+/** room the conversation keeps above the composer */
+const CHAT_MIN = 220;
+
+/** null: the field's natural height */
+function applyComposerHeight(height: number | null) {
+  const root = document.documentElement.style;
+  if (height === null) root.removeProperty('--composer-h');
+  else root.setProperty('--composer-h', `${height}px`);
+}
+
+function savedComposerHeight(): number | null {
+  try {
+    const v = Number(localStorage.getItem(COMPOSER_KEY));
+    return Number.isFinite(v) && v >= COMPOSER_MIN ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+applyComposerHeight(savedComposerHeight());
+
+function saveComposerHeight(height: number | null) {
+  try {
+    if (height === null) localStorage.removeItem(COMPOSER_KEY);
+    else localStorage.setItem(COMPOSER_KEY, String(height));
+  } catch {
+    // this tab only
+  }
+}
+
+function resizeHandle(event: Event) {
+  return event.composedPath().find((el): el is HTMLElement => el instanceof HTMLElement && el.hasAttribute('resize-handle'));
+}
+
+function startComposerResize(event: PointerEvent) {
+  if (event.button !== 0) return;
+  const handle = resizeHandle(event);
+  // the field sits next to the handle, possibly behind Lynx wrappers: nearest ancestor that holds it
+  let scope = handle?.parentElement ?? null;
+  while (scope && !scope.querySelector('[resize-target]')) scope = scope.parentElement;
+  const host = scope?.querySelector<HTMLElement>('[resize-target]');
+  const field = host?.shadowRoot?.querySelector('textarea') ?? null;
+  if (!handle || !field) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const view = event.currentTarget as HTMLElement;
+  const y0 = event.clientY;
+  const h0 = field.getBoundingClientRect().height;
+  const max = Math.max(COMPOSER_MIN, view.getBoundingClientRect().height - CHAT_MIN);
+  let last = h0;
+  handle.setAttribute('resizing', '');
+  document.body.classList.add('resizing-v');
+  const move = (ev: PointerEvent) => {
+    last = Math.round(Math.max(COMPOSER_MIN, Math.min(max, h0 + y0 - ev.clientY)));
+    applyComposerHeight(last);
+  };
+  const end = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', end);
+    window.removeEventListener('pointercancel', end);
+    handle.removeAttribute('resizing');
+    document.body.classList.remove('resizing-v');
+    saveComposerHeight(last);
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', end);
+}
+
+function resetComposerHeight(event: MouseEvent) {
+  if (!resizeHandle(event)) return;
+  applyComposerHeight(null);
+  saveComposerHeight(null);
+}
 
 /**
  * Enter sends, Shift+Enter breaks the line, in textareas marked `enter-send` (composers).
@@ -267,6 +364,7 @@ function keepFocus(event: MouseEvent) {
   if (event.composedPath().some((el) => el instanceof Element && el.hasAttribute('keep-focus'))) event.preventDefault();
 }
 
+/** Mounts one Lynx screen (`<screen>.web.bundle`) in a container. */
 export function createLynx(
   container: HTMLElement,
   screen: string,
@@ -288,6 +386,8 @@ export function createLynx(
   view.addEventListener('keydown', mentionKeys, true);
   view.addEventListener('keydown', enterToSend, true);
   view.addEventListener('mousedown', keepFocus, true);
+  view.addEventListener('pointerdown', startComposerResize, true);
+  view.addEventListener('dblclick', resetComposerHeight, true);
   view.url = `/bundles/${screen}.web.bundle`;
   container.append(view);
   allViews.add(view);

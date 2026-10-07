@@ -95,7 +95,17 @@ function useSidebarWidth() {
   return [width, setWidth, save] as const;
 }
 
-function Resizer({ width, onChange, onDone }: { width: number; onChange: (w: number) => void; onDone: (w: number) => void }) {
+function Resizer({
+  width,
+  onChange,
+  onDone,
+  tip,
+}: {
+  width: number;
+  onChange: (w: number) => void;
+  onDone: (w: number) => void;
+  tip: string;
+}) {
   const [dragging, setDragging] = useState(false);
   const start = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -132,6 +142,8 @@ function Resizer({ width, onChange, onDone }: { width: number; onChange: (w: num
       className={`resizer${dragging ? ' on' : ''}`}
       role="separator"
       aria-orientation="vertical"
+      reil-tip={tip}
+      reil-tip-side="right"
       onPointerDown={start}
       onDoubleClick={reset}
     />
@@ -249,7 +261,11 @@ export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void
   };
 
   const connDot = (
-    <span className={`conn-dot conn-${state}`} title={state === 'connected' ? t('conn.connected') : t('conn.offline')} />
+    <span
+      className={`conn-dot conn-${state}`}
+      reil-tip={state === 'connected' ? t('conn.connected') : state === 'connecting' ? t('conn.connecting') : t('conn.offline')}
+      reil-tip-side="right"
+    />
   );
 
   const modalView = modal && (
@@ -267,13 +283,13 @@ export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void
           <div className="rail-logo">
             <Svg markup={logoMarkup(color('primary'))} size={28} />
           </div>
-          <button type="button" className={`rail-btn${tab === 'sessions' ? ' on' : ''}`} title={t('tab.sessions')} onClick={() => nav.selectTab('sessions')}>
+          <button type="button" className={`rail-btn${tab === 'sessions' ? ' on' : ''}`} reil-tip={t('tab.sessions')} reil-tip-side="right" onClick={() => nav.selectTab('sessions')}>
             <TabIcon name="sessions" active={tab === 'sessions'} />
           </button>
-          <button type="button" className="rail-btn" title={t('tab.new')} onClick={() => setModal({ screen: 'new', params: {} })}>
+          <button type="button" className="rail-btn" reil-tip={t('tip.newSession')} reil-tip-side="right" onClick={() => setModal({ screen: 'new', params: {} })}>
             <TabIcon name="add" active={false} />
           </button>
-          <button type="button" className={`rail-btn${tab === 'settings' ? ' on' : ''}`} title={t('tab.settings')} onClick={() => nav.selectTab('settings')}>
+          <button type="button" className={`rail-btn${tab === 'settings' ? ' on' : ''}`} reil-tip={t('tab.settings')} reil-tip-side="right" onClick={() => nav.selectTab('settings')}>
             <TabIcon name="settings" active={tab === 'settings'} />
           </button>
           <div className="grow" />
@@ -281,7 +297,7 @@ export function App({ conn, onLogout }: { conn: Connection; onLogout: () => void
         </nav>
         <aside className="sidebar" style={{ width: sidebarWidth }}>
           <LynxView screen="sessions" data={{ embedded: true, selectedId: selected ?? '' }} layout={layout} nav={nav} />
-          <Resizer width={sidebarWidth} onChange={setSidebarWidth} onDone={saveSidebarWidth} />
+          <Resizer width={sidebarWidth} onChange={setSidebarWidth} onDone={saveSidebarWidth} tip={t('tip.resize')} />
         </aside>
         <main className="main">
           {tab === 'settings' ? (

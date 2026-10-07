@@ -43,12 +43,17 @@ self-hosted remote control for **Claude Code** and **Codex**, inspired by
 - Session menu on a long press (mobile and PWA) or the row buttons (desktop), with the same options
   as the chat menu; swipe a session left to reveal **Archive**, like Happy. Archiving stops the
   agent (you get a warning if it is still working).
-- Light on memory: idle agents stop after 15 minutes (`REILAI_IDLE_STOP_MINUTES`) and stopped
-  sessions are shown faded. **Resume** (or just sending a message) restarts the agent with its
-  previous context and unarchives the session.
-- Light, dark or system theme. Desktop layout with a sessions sidebar you can resize by dragging
-  its edge (remembered per device, double click to reset) and a **New chat** button while a
-  conversation is open; mobile layout with a native-feeling tab bar. Installable as a PWA.
+- Sessions live until you end or archive them. To save memory, Settings can stop idle agents
+  after a time limit (15 minutes to 24 hours; never by default), and stopped sessions are shown
+  faded. **Resume** (or just sending a message) restarts the agent with its previous context and
+  unarchives the session.
+- Unsent text is kept per conversation (and on the home field), so closing the app or switching
+  sessions never loses a half-written message. Replies, code and tool output are selectable on the
+  web; code blocks have a copy button that confirms the copy.
+- Light, dark or system theme. Desktop layout with a sessions sidebar and a message field you can
+  resize by dragging their edges (remembered per device, double click to reset), tooltips on the
+  icon buttons and a **New chat** button while a conversation is open; mobile layout with a
+  native-feeling tab bar. Installable as a PWA.
 - Native Android app built with [Lynx](https://lynxjs.org): native bottom navigation, the
   same screens as the web, pairing by QR code.
 

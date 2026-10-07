@@ -1,9 +1,10 @@
-import { useState } from '@lynx-js/react';
+import { useInitData, useState } from '@lynx-js/react';
 import type { SolarIconName } from '@reilai/brand';
 import type { MessageKey, Vars } from '@reilai/i18n';
 import type { AgentKind, Message, PermissionDecision } from '@reilai/protocol';
 
 import { copyText, push } from '../../shared/host';
+import { useSelectable } from '../../shared/hooks';
 import { C } from '../../shared/theme';
 import { Button, Icon, Pressable, Spinner } from '../../ui/kit';
 import { Markdown, preserveIndent } from '../../ui/Markdown';
@@ -38,11 +39,18 @@ function inputPreview(name: string, input: unknown): string {
   return json.length > 3000 ? `${json.slice(0, 3000)}\n…` : json;
 }
 
+/** Native: long press copies the whole message. Web: the text is selectable instead. */
+function useCopyOnLongPress(text: string | undefined) {
+  const init = useInitData();
+  return init.platform === 'web' ? undefined : () => copyText(text ?? '');
+}
+
 export function UserBubble({ m }: { m: Message }) {
+  const sel = useSelectable();
   return (
     <view className="ubub-row">
-      <view className="ubub" bindlongpress={() => copyText(m.text ?? '')}>
-        <text className="t-body" style={{ color: C['on-user-bubble'] }}>
+      <view className="ubub" bindlongpress={useCopyOnLongPress(m.text)}>
+        <text className="t-body" style={{ color: C['on-user-bubble'] }} {...sel}>
           {m.text}
         </text>
       </view>
@@ -64,7 +72,7 @@ function toolPaths(input: unknown): string[] {
 
 export function AgentText({ m, cwd }: { m: Message; cwd: string }) {
   return (
-    <view className="atext" bindlongpress={() => copyText(m.text ?? '')}>
+    <view className="atext" bindlongpress={useCopyOnLongPress(m.text)}>
       <Markdown text={m.text ?? ''} onOpenPath={(path) => openFile(path, cwd)} />
       {m.streaming && <view className="caret pulse" />}
     </view>
@@ -73,6 +81,7 @@ export function AgentText({ m, cwd }: { m: Message; cwd: string }) {
 
 export function Thinking({ m, t }: { m: Message; t: T }) {
   const [open, setOpen] = useState(false);
+  const sel = useSelectable();
   return (
     <view className="think">
       <view className="row hov" style={{ borderRadius: '8px' }} bindtap={() => setOpen((o) => !o)}>
@@ -83,7 +92,7 @@ export function Thinking({ m, t }: { m: Message; t: T }) {
         <Icon name={open ? 'chevronUp' : 'chevronDown'} size={14} color={C['text-tertiary']} />
       </view>
       {open && (
-        <text className="t-sub think-body" style={{ fontStyle: 'italic' }}>
+        <text className="t-sub think-body" style={{ fontStyle: 'italic' }} {...sel}>
           {m.text}
         </text>
       )}
@@ -96,6 +105,7 @@ export function ToolRow({ m, t, cwd }: { m: Message; t: T; cwd: string }) {
   const tool = m.tool!;
   const running = tool.status === 'running';
   const isShell = tool.name.toLowerCase() === 'bash';
+  const sel = useSelectable();
   return (
     <view className="tool">
       <Pressable className="tool-head" pressedClassName="tool-head-pressed" onTap={() => setOpen((o) => !o)}>
@@ -128,7 +138,9 @@ export function ToolRow({ m, t, cwd }: { m: Message; t: T; cwd: string }) {
             {t('chat.toolInput').toUpperCase()}
           </text>
           <scroll-view scroll-orientation="horizontal">
-            <text className="t-mono">{preserveIndent(inputPreview(tool.name, tool.input))}</text>
+            <text className="t-mono" {...sel}>
+              {preserveIndent(inputPreview(tool.name, tool.input))}
+            </text>
           </scroll-view>
           {!!tool.output && (
             <>
@@ -136,7 +148,7 @@ export function ToolRow({ m, t, cwd }: { m: Message; t: T; cwd: string }) {
                 {t('chat.toolOutput').toUpperCase()}
               </text>
               <scroll-view scroll-orientation="horizontal">
-                <text className="t-mono" style={tool.status === 'error' ? { color: C.danger } : undefined}>
+                <text className="t-mono" style={tool.status === 'error' ? { color: C.danger } : undefined} {...sel}>
                   {preserveIndent(tool.output.length > 6000 ? `${tool.output.slice(0, 6000)}\n…` : tool.output)}
                 </text>
               </scroll-view>
@@ -162,6 +174,7 @@ export function PermissionCard({
   const p = m.permission!;
   const pending = p.status === 'pending';
   const [busy, setBusy] = useState<PermissionDecision | null>(null);
+  const sel = useSelectable();
   const decide = (d: PermissionDecision) => {
     setBusy(d);
     onDecide(d);
@@ -198,7 +211,9 @@ export function PermissionCard({
       </view>
       <view className="perm-detail">
         <scroll-view scroll-orientation="vertical" style={{ maxHeight: '220px' }}>
-          <text className="t-mono">{preserveIndent(p.detail)}</text>
+          <text className="t-mono" {...sel}>
+            {preserveIndent(p.detail)}
+          </text>
         </scroll-view>
       </view>
       <view className="row" style={{ marginTop: '12px' }}>
@@ -219,6 +234,7 @@ export function PermissionCard({
 
 export function EventLine({ m, t }: { m: Message; t: T }) {
   const e = m.event!;
+  const sel = useSelectable();
   if (e.type === 'turn-end') {
     const secs = ((e.durationMs ?? 0) / 1000).toFixed(1);
     return (
@@ -236,7 +252,7 @@ export function EventLine({ m, t }: { m: Message; t: T }) {
   return (
     <view className={isError ? 'evt-err' : 'evt-info'}>
       <Icon name={isError ? 'danger' : 'info'} size={15} color={isError ? C.danger : C['text-secondary']} />
-      <text className="t-sub grow" style={{ marginLeft: '8px', color: isError ? C.danger : C['text-secondary'] }}>
+      <text className="t-sub grow" style={{ marginLeft: '8px', color: isError ? C.danger : C['text-secondary'] }} {...sel}>
         {e.text === 'interrupted' ? t('chat.stop') : (e.text ?? t('error.generic'))}
       </text>
     </view>

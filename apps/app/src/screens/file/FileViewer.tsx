@@ -2,9 +2,9 @@ import { useEffect, useInitData, useMemo, useState } from '@lynx-js/react';
 import type { DirEntry, FileContent } from '@reilai/protocol';
 
 import { copyText, pop, rpc } from '../../shared/host';
-import { useLanguage, useLayout } from '../../shared/hooks';
+import { useLanguage, useLayout, useSelectable } from '../../shared/hooks';
 import { C } from '../../shared/theme';
-import { Button, EmptyState, Header, Icon, IconButton, Pressable, Spinner, Toast } from '../../ui/kit';
+import { Button, EmptyState, Header, Icon, IconButton, Pressable, Spinner } from '../../ui/kit';
 import { Markdown, preserveIndent } from '../../ui/Markdown';
 import './file.css';
 
@@ -29,6 +29,7 @@ function fileIcon(entry: DirEntry) {
 
 /** Text with a line-number gutter; both columns share font and line height so they stay aligned. */
 function CodeView({ text }: { text: string }) {
+  const sel = useSelectable();
   const { numbers, body, cut } = useMemo(() => {
     const lines = text.split('\n');
     const shown = lines.slice(0, MAX_LINES);
@@ -43,7 +44,9 @@ function CodeView({ text }: { text: string }) {
       <scroll-view scroll-orientation="horizontal" className="code-scroll">
         <view className="row" style={{ alignItems: 'flex-start' }}>
           <text className="t-mono code-gutter">{numbers}</text>
-          <text className="t-mono code-body">{body}</text>
+          <text className="t-mono code-body" {...sel}>
+            {body}
+          </text>
         </view>
       </scroll-view>
       {cut && <text className="t-caption" style={{ padding: '10px 16px' }}>{`… ${MAX_LINES}+`}</text>}
@@ -58,7 +61,7 @@ export function FileViewer() {
   const cwd = init.cwd ?? '';
   const [history, setHistory] = useState<Entry[]>([{ path: init.path ?? cwd }]);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const current = history[history.length - 1]!;
 
   useEffect(() => {
@@ -85,7 +88,7 @@ export function FileViewer() {
     <view className="root">
       <Header
         safeTop={safeTop}
-        left={<IconButton name="back" onTap={back} />}
+        left={<IconButton name="back" tip={t('common.back')} onTap={back} />}
         title={title}
         subtitle={
           !!subtitle && (
@@ -97,15 +100,17 @@ export function FileViewer() {
         right={
           loaded?.kind === 'file' ? (
             <IconButton
-              name="copy"
+              name={copied ? 'checkLine' : 'copy'}
+              color={copied ? C.success : undefined}
+              tip={copied ? t('common.copied') : t('common.copy')}
               onTap={() => {
                 copyText(loaded.file.kind === 'text' ? loaded.file.content : loaded.file.path);
-                setToast(t('common.copied'));
-                setTimeout(() => setToast(null), 1500);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1600);
               }}
             />
           ) : up ? (
-            <IconButton name="chevronUp" onTap={() => open(up)} />
+            <IconButton name="chevronUp" tip={t('tip.parent')} onTap={() => open(up)} />
           ) : undefined
         }
       />
@@ -170,7 +175,6 @@ export function FileViewer() {
           <view style={{ height: `${24 + safeBottom}px` }} />
         </scroll-view>
       )}
-      <Toast text={toast} />
     </view>
   );
 }

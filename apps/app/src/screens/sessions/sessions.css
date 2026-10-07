@@ -43,4 +43,5 @@
   background-color: var(--primary-soft);
 }
 .new-chat-pressed { background-color: var(--surface-pressed); }
-.srow-act { width: 28px; height: 24px; display: flex; align-items: center; justify-content: flex-end; margin-left: 6px; }
+/* square hit area with rounded corners: the hover tint hugs the icon */
+.srow-act { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-left: 4px; margin-top: -5px; margin-bottom: -5px; }

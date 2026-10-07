@@ -23,8 +23,6 @@ import type { Store } from './store';
 export type Broadcast = <E extends ServerEventName>(event: E, data: ServerEvents[E]) => void;
 
 const STREAM_FLUSH_MS = 50;
-/** Idle agents are stopped to free memory; the next message resumes them. */
-const IDLE_STOP_MS = Number(process.env.REILAI_IDLE_STOP_MINUTES ?? 15) * 60_000;
 const TITLE_MAX = 64;
 
 function newId() {
@@ -283,8 +281,13 @@ export class SessionManager {
     this.sweeper = setInterval(() => void this.stopIdle(), 60_000);
   }
 
-  /** Stops agents that sat idle (no turn, no pending approval) for IDLE_STOP_MS. */
+  /**
+   * Stops agents that sat idle (no turn, no pending approval) longer than the
+   * `sessionTimeoutMinutes` setting, to free memory; the next message resumes them.
+   * 0 (the default) never stops them: they end by hand or by archiving.
+   */
   private async stopIdle() {
+    const limitMs = this.store.getSettings().sessionTimeoutMinutes * 60_000;
     const now = Date.now();
     for (const [id, live] of this.live) {
       if (!live.runner) {
@@ -293,7 +296,7 @@ export class SessionManager {
       }
       const session = this.store.getSession(id);
       if (this.terminals.get(id)) continue;
-      if (session?.status === 'idle' && now - session.updatedAt > IDLE_STOP_MS) await live.runner.close().catch(() => {});
+      if (limitMs > 0 && session?.status === 'idle' && now - session.updatedAt > limitMs) await live.runner.close().catch(() => {});
     }
   }
 

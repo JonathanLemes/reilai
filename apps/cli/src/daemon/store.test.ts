@@ -59,15 +59,15 @@ describe('store', () => {
     expect(tool?.tool?.status).toBe('error');
   });
 
-  test('archived sessions are listed apart and settings default to system', () => {
+  test('archived sessions are listed apart and settings default to system, no session limit', () => {
     const store = new Store(':memory:');
     store.insertSession(session('a'));
     store.insertSession(session('b', { archived: true }));
     expect(store.listSessions().map((s) => s.id)).toEqual(['a']);
     expect(store.listSessions(true).map((s) => s.id)).toEqual(['b']);
-    expect(store.getSettings()).toEqual({ language: 'system' });
-    store.saveSettings({ language: 'pt' });
-    expect(store.getSettings().language).toBe('pt');
+    expect(store.getSettings()).toEqual({ language: 'system', sessionTimeoutMinutes: 0 });
+    store.saveSettings({ language: 'pt', sessionTimeoutMinutes: 30 });
+    expect(store.getSettings()).toEqual({ language: 'pt', sessionTimeoutMinutes: 30 });
   });
 
   test('devices are unique by public key', () => {

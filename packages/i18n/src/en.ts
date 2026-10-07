@@ -168,6 +168,20 @@ export const en = {
   'settings.about': 'About',
   'settings.aboutBody': 'Open-source remote control for coding agents. End-to-end encrypted tunnel.',
   'settings.logout': 'Sign out of this browser',
+  'settings.sessions': 'Sessions',
+  'settings.timeout': 'Stop idle agents',
+  'settings.timeoutHint': 'Sessions stay alive until you end or archive them. With a limit, agents idle for that long are stopped to free memory; sending a message resumes them.',
+  'settings.timeout.never': 'Never',
+  'duration.minutes': '{n} minutes',
+  'duration.hour': '1 hour',
+  'duration.hours': '{n} hours',
+
+  // tooltips (desktop)
+  'tip.more': 'More actions',
+  'tip.mode': 'Permission mode',
+  'tip.resize': 'Drag to resize, double-click to reset',
+  'tip.newSession': 'New session',
+  'tip.parent': 'Parent folder',
 
   // pairing
   'pair.title': 'Connect to your computer',

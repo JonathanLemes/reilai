@@ -168,6 +168,11 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
     'settings.set': (p) => {
       const next: Settings = { ...store.getSettings() };
       if (p.language === 'en' || p.language === 'pt' || p.language === 'system') next.language = p.language;
+      if (p.sessionTimeoutMinutes !== undefined) {
+        const minutes = Number(p.sessionTimeoutMinutes);
+        if (!Number.isFinite(minutes) || minutes < 0) throw new RpcError('bad_request', 'sessionTimeoutMinutes must be >= 0');
+        next.sessionTimeoutMinutes = Math.round(minutes);
+      }
       store.saveSettings(next);
       broadcast('settings.changed', next);
       return next;

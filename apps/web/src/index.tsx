@@ -6,9 +6,12 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import { App, Svg } from './shell/App';
 import { checkToken, Connection, readToken, saveToken } from './shell/connection';
-import { applyShellTheme, attachConnection, currentLang, setLangPref, themeState } from './shell/lynx';
+import { applyShellTheme, attachConnection, currentLang, installCopyCleanup, setLangPref, themeState } from './shell/lynx';
+import { installTooltips } from './shell/tooltip';
 
 applyShellTheme();
+installTooltips();
+installCopyCleanup();
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('/sw.js').catch(() => {});

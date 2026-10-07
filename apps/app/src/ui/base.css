@@ -242,7 +242,9 @@ input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
   margin-bottom: 10px;
   overflow: hidden;
 }
-.md-copy { padding: 4px; border-radius: 6px; }
+.md-copy { display: flex; flex-direction: row; align-items: center; padding: 4px; border-radius: 6px; }
+.md-copy-done { background-color: var(--success-soft); padding: 4px 8px 4px 6px; }
+.md-copy-label { font-size: 12px; line-height: 15px; font-weight: 600; color: var(--success); margin-left: 4px; }
 .md-code-head { padding: 6px 12px; display: flex; flex-direction: row; align-items: center; border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--border); }
 .md-code-body { padding: 10px 12px; }
 .md-hr { height: 1px; background-color: var(--border); margin: 8px 0 12px 0; }

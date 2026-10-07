@@ -88,10 +88,10 @@ function SessionRow({
           <StatusBadge session={s} t={t} />
           {onArchive && (
             <>
-              <view className="srow-act hov" catchtap={onArchive}>
+              <view className="srow-act hov" catchtap={onArchive} reil-tip={s.archived ? t('chat.menu.unarchive') : t('chat.menu.archive')}>
                 <Icon name={s.archived ? 'history' : 'archive'} size={15} color={C['text-tertiary']} />
               </view>
-              <view className="srow-act hov" catchtap={onMenu}>
+              <view className="srow-act hov" catchtap={onMenu} reil-tip={t('tip.more')}>
                 <Icon name="more" size={15} color={C['text-tertiary']} />
               </view>
             </>
@@ -155,8 +155,13 @@ export function Sessions() {
         <text className={embedded ? 't-headline grow' : 't-title grow'} style={embedded ? { fontSize: '20px' } : undefined}>
           {embedded ? 'ReilAI' : t('sessions.title')}
         </text>
-        <IconButton name={archived ? 'history' : 'archive'} onTap={() => setArchived((a) => !a)} color={archived ? C.primary : C['text-secondary']} />
-        {desktop && <IconButton name="add" onTap={newSession} color={C.primary} size={26} />}
+        <IconButton
+          name={archived ? 'history' : 'archive'}
+          tip={archived ? t('sessions.hideArchived') : t('sessions.showArchived')}
+          onTap={() => setArchived((a) => !a)}
+          color={archived ? C.primary : C['text-secondary']}
+        />
+        {desktop && <IconButton name="add" tip={t('tip.newSession')} onTap={newSession} color={C.primary} size={26} />}
       </view>
 
       <view className="row" style={{ padding: '0 16px 10px 16px' }}>

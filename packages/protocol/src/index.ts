@@ -108,7 +108,12 @@ export type LanguagePref = Language | 'system';
 
 export interface Settings {
   language: LanguagePref;
+  /** Minutes an idle agent stays alive before it is stopped; 0 = never (ended by hand or by archiving). */
+  sessionTimeoutMinutes: number;
 }
+
+/** Choices offered by the clients for `sessionTimeoutMinutes` (0 = never). */
+export const SESSION_TIMEOUTS = [0, 15, 30, 60, 240, 1440] as const;
 
 export interface MachineInfo {
   name: string;

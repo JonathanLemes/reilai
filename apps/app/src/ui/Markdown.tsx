@@ -1,6 +1,8 @@
-import { useMemo } from '@lynx-js/react';
+import { useEffect, useInitData, useMemo, useRef, useState } from '@lynx-js/react';
+import { resolveLanguage, translator } from '@reilai/i18n';
 
-import { copyText } from '../shared/host';
+import { copyText, haptic } from '../shared/host';
+import { useSelectable } from '../shared/hooks';
 import { C } from '../shared/theme';
 import { Icon } from './kit';
 import { type Inline, parseMarkdown } from './markdown-parse';
@@ -56,8 +58,37 @@ function Inlines({ items, onOpenPath }: { items: Inline[]; onOpenPath?: (path: s
   );
 }
 
+/** Copy button that turns into a check for a moment, so the copy is visible. */
+export function CopyButton({ text, size = 15, className = 'md-copy' }: { text: string; size?: number; className?: string }) {
+  // language from the screen data: no settings request or listeners per code block
+  const init = useInitData();
+  const t = translator(init.lang ?? resolveLanguage(init.langPref ?? 'system', init.systemLocale));
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+  return (
+    <view
+      className={`hov ${className}${copied ? ' md-copy-done' : ''}`}
+      reil-tip={copied ? t('common.copied') : t('common.copy')}
+      bindtap={() => {
+        copyText(text);
+        haptic('light');
+        setCopied(true);
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setCopied(false), 1600);
+      }}
+    >
+      <Icon name={copied ? 'checkLine' : 'copy'} size={size} color={copied ? C.success : C['text-tertiary']} />
+      {copied && <text className="md-copy-label">{t('common.copied')}</text>}
+    </view>
+  );
+}
+
 export function Markdown({ text, color, onOpenPath }: { text: string; color?: string; onOpenPath?: (path: string) => void }) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
+  const sel = useSelectable();
   const tint = color ? { color } : undefined;
   return (
     <view className="md">
@@ -65,13 +96,13 @@ export function Markdown({ text, color, onOpenPath }: { text: string; color?: st
         switch (b.t) {
           case 'p':
             return (
-              <text key={i} className="t-body md-p" style={tint}>
+              <text key={i} className="t-body md-p" style={tint} {...sel}>
                 <Inlines items={b.inl} onOpenPath={onOpenPath} />
               </text>
             );
           case 'h':
             return (
-              <text key={i} className={`md-h md-h${b.level}`} style={tint}>
+              <text key={i} className={`md-h md-h${b.level}`} style={tint} {...sel}>
                 <Inlines items={b.inl} onOpenPath={onOpenPath} />
               </text>
             );
@@ -79,7 +110,7 @@ export function Markdown({ text, color, onOpenPath }: { text: string; color?: st
             return (
               <view key={i} className="md-li" style={{ paddingLeft: `${b.depth * 16}px` }}>
                 <text className="t-body md-bullet">{b.ordered ? `${b.n}.` : '•'}</text>
-                <text className="t-body grow" style={tint}>
+                <text className="t-body grow" style={tint} {...sel}>
                   <Inlines items={b.inl} onOpenPath={onOpenPath} />
                 </text>
               </view>
@@ -87,7 +118,7 @@ export function Markdown({ text, color, onOpenPath }: { text: string; color?: st
           case 'quote':
             return (
               <view key={i} className="md-quote">
-                <text className="t-body muted">
+                <text className="t-body muted" {...sel}>
                   <Inlines items={b.inl} onOpenPath={onOpenPath} />
                 </text>
               </view>
@@ -97,12 +128,12 @@ export function Markdown({ text, color, onOpenPath }: { text: string; color?: st
               <view key={i} className="md-code">
                 <view className="md-code-head">
                   <text className="t-caption grow">{b.lang || 'code'}</text>
-                  <view className="hov md-copy" bindtap={() => copyText(b.v)}>
-                    <Icon name="copy" size={15} color={C['text-tertiary']} />
-                  </view>
+                  <CopyButton text={b.v} />
                 </view>
                 <scroll-view scroll-orientation="horizontal" className="md-code-body">
-                  <text className="t-mono">{preserveIndent(b.v)}</text>
+                  <text className="t-mono" {...sel}>
+                    {preserveIndent(b.v)}
+                  </text>
                 </scroll-view>
               </view>
             );

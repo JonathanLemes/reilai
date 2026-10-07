@@ -3,6 +3,7 @@ import { type MessageKey, translateModelText, type Vars } from '@reilai/i18n';
 import { type AgentKind, PERMISSION_MODES, type PermissionMode, projectName } from '@reilai/protocol';
 
 import { findModel, shortModelLabel, useHello, useModels } from '../../shared/data';
+import { useDraft } from '../../shared/draft';
 import { haptic, kvGet, kvSet, openSession, rpc } from '../../shared/host';
 import { C } from '../../shared/theme';
 import { AgentAvatar } from '../../ui/agent';
@@ -49,7 +50,15 @@ export function HomeComposer({
   const [sending, setSending] = useState(false);
   const models = useModels(agent);
   const currentModel = findModel(models, model);
-  const mentions = useMentions({ inputId: 'home-input', cwd: cwd || undefined, onChange: setText });
+  const saved = useDraft('home', 'home-input', setText);
+  const mentions = useMentions({
+    inputId: 'home-input',
+    cwd: cwd || undefined,
+    onChange: (value) => {
+      setText(value);
+      saved.save(value);
+    },
+  });
 
   useEffect(() => {
     kvGet('new.agent').then((v) => (v === 'claude' || v === 'codex') && setAgent(v));
@@ -87,6 +96,7 @@ export function HomeComposer({
       const session = await rpc('sessions.create', { agent, cwd, prompt, mode, model, startedBy: 'app' });
       input('setValue', { value: '' });
       setText('');
+      saved.clear();
       mentions.reset();
       collapse();
       openSession(session.id);
@@ -162,17 +172,18 @@ export function HomeComposer({
             bindfocus={() => setExpanded(true)}
             bindinput={(e: { detail: { value: string; selectionStart?: number } }) => {
               setText(e.detail.value);
+              saved.save(e.detail.value);
               mentions.onInput(e.detail);
             }}
           />
           <view className="row" style={{ marginTop: '6px' }}>
-            <Pressable className="hc-chip" pressedClassName="hc-chip-pressed" onTap={() => openSheet('mode')} style={{ flexShrink: 0 }}>
+            <Pressable className="hc-chip" pressedClassName="hc-chip-pressed" tip={t('tip.mode')} onTap={() => openSheet('mode')} style={{ flexShrink: 0 }}>
               <Icon name={MODE_ICON[mode]} size={15} color={mode === 'yolo' ? C.danger : C.primary} />
               <text className="t-callout" text-maxline="1" style={{ marginLeft: '6px' }}>
                 {t(`mode.${mode}`)}
               </text>
             </Pressable>
-            <Pressable className="hc-chip" pressedClassName="hc-chip-pressed" onTap={() => openSheet('model')} style={{ flexShrink: 1 }}>
+            <Pressable className="hc-chip" pressedClassName="hc-chip-pressed" tip={t('model.title')} onTap={() => openSheet('model')} style={{ flexShrink: 1 }}>
               <Icon name="cpu" size={15} color={C.primary} />
               <text className="t-callout" text-maxline="1" style={{ marginLeft: '6px' }}>
                 {currentModel ? translateModelText(lang, shortModelLabel(currentModel)) : t('model.default')}
@@ -184,7 +195,7 @@ export function HomeComposer({
               </text>
             )}
             <view className="grow" />
-            <Pressable className={`hc-send${text.trim() ? '' : ' hc-send-off'}`} onTap={send} disabled={sending}>
+            <Pressable className={`hc-send${text.trim() ? '' : ' hc-send-off'}`} tip={t('chat.send')} onTap={send} disabled={sending}>
               {sending ? <Spinner size={16} color={C['on-primary']} /> : <Icon name="arrowUp" size={20} color={C['on-primary']} />}
             </Pressable>
           </view>

@@ -155,6 +155,20 @@ export const pt: Dictionary = {
   'settings.about': 'Sobre',
   'settings.aboutBody': 'Controle remoto open source para agentes de código. Túnel com criptografia de ponta a ponta.',
   'settings.logout': 'Sair neste navegador',
+  'settings.sessions': 'Sessões',
+  'settings.timeout': 'Encerrar agentes ociosos',
+  'settings.timeoutHint': 'As sessões ficam ativas até você encerrar ou arquivar. Com um limite, agentes ociosos por esse tempo são parados para liberar memória; enviar uma mensagem os retoma.',
+  'settings.timeout.never': 'Nunca',
+  'duration.minutes': '{n} minutos',
+  'duration.hour': '1 hora',
+  'duration.hours': '{n} horas',
+
+  // dicas (desktop)
+  'tip.more': 'Mais ações',
+  'tip.mode': 'Modo de permissão',
+  'tip.resize': 'Arraste para redimensionar, duplo clique para voltar',
+  'tip.newSession': 'Nova sessão',
+  'tip.parent': 'Pasta acima',
 
   'pair.title': 'Conecte ao seu computador',
   'pair.body': 'No computador, rode o comando abaixo e escaneie o QR code com a câmera.',

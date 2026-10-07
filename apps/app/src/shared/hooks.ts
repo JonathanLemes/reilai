@@ -75,3 +75,16 @@ export function useTick(ms = 30_000) {
     return () => clearInterval(id);
   }, [ms]);
 }
+
+/**
+ * Props that make a `<text>` selectable with the mouse or the browser's own touch
+ * selection (Lynx web renders text as `user-select: none` otherwise). Native hosts
+ * keep long press to copy the whole message instead.
+ */
+export function useSelectable(): { 'text-selection'?: boolean } {
+  const init = useInitData();
+  return init.platform === 'web' ? SELECTABLE : NONE;
+}
+
+const SELECTABLE = { 'text-selection': true } as const;
+const NONE = {};

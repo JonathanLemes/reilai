@@ -214,7 +214,8 @@ export class Store {
   getSettings(): Settings {
     const row = this.db.query<{ value: string }, [string]>('SELECT value FROM kv WHERE key = ?').get('settings');
     const saved = row ? (JSON.parse(row.value) as Partial<Settings>) : {};
-    return { language: saved.language ?? 'system' };
+    const timeout = Number(saved.sessionTimeoutMinutes);
+    return { language: saved.language ?? 'system', sessionTimeoutMinutes: Number.isFinite(timeout) && timeout > 0 ? timeout : 0 };
   }
 
   saveSettings(settings: Settings) {

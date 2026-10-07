@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useInitData, useLynxGlobalEventListener, useState } from '@lynx-js/react';
 import type { ThemePref } from '@reilai/brand';
 import { LANGUAGES, type LanguagePref, relativeTime } from '@reilai/i18n';
-import type { Device } from '@reilai/protocol';
+import { type Device, SESSION_TIMEOUTS } from '@reilai/protocol';
 
 import { useHello } from '../../shared/data';
 import { rpc, setThemePref } from '../../shared/host';
 import { useConnection, useLanguage, useLayout, useServerEvent } from '../../shared/hooks';
 import { C } from '../../shared/theme';
 import { AgentAvatar } from '../../ui/agent';
-import { Button, Cell, ConfirmDialog, Divider, Icon, Logo, Segmented, Toast } from '../../ui/kit';
+import { ActionSheet, Button, Cell, ConfirmDialog, Divider, Icon, Logo, Segmented, Toast } from '../../ui/kit';
 
 export function Settings() {
   const init = useInitData();
@@ -21,6 +21,7 @@ export function Settings() {
   const [revoking, setRevoking] = useState<Device | null>(null);
   const [confirmUnpair, setConfirmUnpair] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [timeoutSheet, setTimeoutSheet] = useState(false);
 
   const loadDevices = useCallback(() => {
     rpc('devices.list', {})
@@ -37,11 +38,20 @@ export function Settings() {
   });
 
   const language = hello?.settings.language ?? init.langPref ?? 'system';
-  const setLanguage = (value: LanguagePref) =>
-    rpc('settings.set', { language: value }).catch((e: Error) => {
-      setToast(e.message);
-      setTimeout(() => setToast(null), 2500);
-    });
+  const fail = (e: Error) => {
+    setToast(e.message);
+    setTimeout(() => setToast(null), 2500);
+  };
+  const setLanguage = (value: LanguagePref) => rpc('settings.set', { language: value }).catch(fail);
+  const timeout = hello?.settings.sessionTimeoutMinutes ?? 0;
+  const timeoutLabel = (minutes: number) =>
+    !minutes
+      ? t('settings.timeout.never')
+      : minutes < 60
+        ? t('duration.minutes', { n: minutes })
+        : minutes === 60
+          ? t('duration.hour')
+          : t('duration.hours', { n: Math.round(minutes / 60) });
 
   return (
     <view className="root">
@@ -76,6 +86,16 @@ export function Settings() {
               { value: 'dark', label: t('settings.theme.dark'), icon: 'moon' },
             ]}
           />
+        </view>
+
+        <text className="t-section group-label">{t('settings.sessions').toUpperCase()}</text>
+        <view style={{ padding: '0 16px' }}>
+          <view className="card">
+            <Cell icon="timer" title={t('settings.timeout')} value={hello ? timeoutLabel(timeout) : '…'} chevron onTap={() => setTimeoutSheet(true)} />
+          </view>
+          <text className="t-caption" style={{ marginTop: '8px', paddingLeft: '4px' }}>
+            {t('settings.timeoutHint')}
+          </text>
         </view>
 
         <text className="t-section group-label">{t('settings.machine').toUpperCase()}</text>
@@ -161,6 +181,16 @@ export function Settings() {
         <view style={{ height: `${40 + safeBottom}px` }} />
       </scroll-view>
 
+      <ActionSheet
+        open={timeoutSheet}
+        onClose={() => setTimeoutSheet(false)}
+        title={t('settings.timeout')}
+        actions={SESSION_TIMEOUTS.map((minutes) => ({
+          label: `${timeoutLabel(minutes)}${timeout === minutes ? '  ✓' : ''}`,
+          icon: 'timer' as const,
+          onTap: () => rpc('settings.set', { sessionTimeoutMinutes: minutes }).catch(fail),
+        }))}
+      />
       <ConfirmDialog
         open={!!revoking}
         title={t('settings.revokeConfirm', { name: revoking?.name ?? '' })}

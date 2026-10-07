@@ -3,6 +3,7 @@ import { translateModelText } from '@reilai/i18n';
 import { type Message, PERMISSION_MODES, type PermissionMode, projectName } from '@reilai/protocol';
 
 import { findModel, shortModelLabel, useConversation, useModels } from '../../shared/data';
+import { useDraft } from '../../shared/draft';
 import { haptic, pop, rpc } from '../../shared/host';
 import { useConnection, useLanguage, useLayout } from '../../shared/hooks';
 import { C } from '../../shared/theme';
@@ -60,8 +61,8 @@ function estimateHeight(m: Message): number {
   }
 }
 
-function clearComposer() {
-  lynx.createSelectorQuery().select('#composer').invoke({ method: 'setValue', params: { value: '' } }).exec();
+function setComposer(value: string) {
+  lynx.createSelectorQuery().select('#composer').invoke({ method: 'setValue', params: { value } }).exec();
 }
 
 export function Chat() {
@@ -90,7 +91,15 @@ export function Chat() {
   /** older pages only after the first jump to the end (the top is briefly visible while it lands) */
   const settledAt = useRef(0);
   const scrollTop = useRef(0);
-  const mentions = useMentions({ inputId: 'composer', cwd: session?.cwd, onChange: setDraft });
+  const saved = useDraft(session?.id, 'composer', setDraft);
+  const mentions = useMentions({
+    inputId: 'composer',
+    cwd: session?.cwd,
+    onChange: (value) => {
+      setDraft(value);
+      saved.save(value);
+    },
+  });
 
   const flash = (text: string) => {
     setToast(text);
@@ -137,7 +146,8 @@ export function Chat() {
     if (!text || !session) return;
     setSending(true);
     setDraft('');
-    clearComposer();
+    setComposer('');
+    saved.clear();
     mentions.reset();
     pinned.current = true;
     haptic('light');
@@ -145,6 +155,8 @@ export function Chat() {
       await rpc('sessions.send', { id: session.id, text });
     } catch (e) {
       setDraft(text);
+      setComposer(text);
+      saved.save(text);
       flash((e as Error).message);
     } finally {
       setSending(false);
@@ -188,7 +200,7 @@ export function Chat() {
         title={session ? session.title || t('sessions.untitled') : ''}
         subtitle={
           session && (
-            <view className="row hov" style={{ marginTop: '1px', borderRadius: '6px' }} bindtap={() => setModes(true)}>
+            <view className="row hov" style={{ marginTop: '1px', borderRadius: '6px' }} reil-tip={t('tip.mode')} bindtap={() => setModes(true)}>
               <StatusDot status={session.status} />
               <text className="t-caption" style={{ marginLeft: '5px' }} text-maxline="1">
                 {`${agentName} · ${projectName(session.cwd)} · ${t(`status.${session.status}`)}`}
@@ -199,9 +211,15 @@ export function Chat() {
         right={
           session && (
             <view className="row">
-              {desktop && <IconButton name="folderOpen" onTap={() => openFile(session.cwd, session.cwd)} />}
-              {desktop && <IconButton name="archive" onTap={() => sessionActions.requestArchive(session)} />}
-              <IconButton name="more" onTap={() => sessionActions.openMenu(session)} />
+              {desktop && <IconButton name="folderOpen" tip={t('chat.menu.files')} onTap={() => openFile(session.cwd, session.cwd)} />}
+              {desktop && (
+                <IconButton
+                  name={session.archived ? 'history' : 'archive'}
+                  tip={session.archived ? t('chat.menu.unarchive') : t('chat.menu.archive')}
+                  onTap={() => sessionActions.requestArchive(session)}
+                />
+              )}
+              <IconButton name="more" tip={t('tip.more')} onTap={() => sessionActions.openMenu(session)} />
             </view>
           )
         }
@@ -287,8 +305,10 @@ export function Chat() {
 
       {session && (
         <view className="composer" style={{ paddingBottom: `${10 + safeBottom}px` }}>
+          {/* desktop: the web shell drags this edge to give the field more room (like the sidebar) */}
+          {desktop && web && <view className="composer-grip" resize-handle="composer" reil-tip={t('tip.resize')} />}
           <view className="row" style={{ marginBottom: '8px' }}>
-            <Pressable className="chip" pressedClassName="chip-on" onTap={() => setModes(true)}>
+            <Pressable className="chip" pressedClassName="chip-on" tip={t('tip.mode')} onTap={() => setModes(true)}>
               <Icon name={MODE_ICON[session.mode]} size={14} color={session.mode === 'yolo' ? C.danger : C.primary} />
               <text className="t-caption" style={{ marginLeft: '6px', fontWeight: '600', color: C.text }}>
                 {t(`mode.${session.mode}`)}
@@ -297,7 +317,7 @@ export function Chat() {
                 <Icon name="chevronDown" size={12} color={C['text-tertiary']} />
               </view>
             </Pressable>
-            <Pressable className="chip" pressedClassName="chip-on" style={{ marginLeft: '8px', flexShrink: 1 }} onTap={() => setModelSheet(true)}>
+            <Pressable className="chip" pressedClassName="chip-on" style={{ marginLeft: '8px', flexShrink: 1 }} tip={t('model.title')} onTap={() => setModelSheet(true)}>
               <Icon name="cpu" size={14} color={C.primary} />
               <text className="t-caption" text-maxline="1" style={{ marginLeft: '6px', fontWeight: '600', color: C.text }}>
                 {currentModel ? translateModelText(lang, shortModelLabel(currentModel)) : (session.model ?? t('model.default'))}
@@ -316,23 +336,25 @@ export function Chat() {
           <view className="composer-box">
             <textarea
               id="composer"
-              className="composer-input"
+              className={desktop && web ? 'composer-input composer-input-desk' : 'composer-input'}
               placeholder={t('chat.placeholder', { agent: agentName })}
               maxlines={8}
+              resize-target
               enter-send
               mention-open={mentions.open ? 'on' : 'off'}
               bindconfirm={() => !sending && !mentions.open && void send()}
               bindinput={(e: { detail: { value: string; selectionStart?: number } }) => {
                 setDraft(e.detail.value);
+                saved.save(e.detail.value);
                 mentions.onInput(e.detail);
               }}
             />
             {running && !draft.trim() ? (
-              <Pressable className="send send-stop" onTap={() => act(rpc('sessions.interrupt', { id: session.id }))}>
+              <Pressable className="send send-stop" tip={t('chat.stop')} onTap={() => act(rpc('sessions.interrupt', { id: session.id }))}>
                 <Icon name="stop" size={18} color={C['on-primary']} />
               </Pressable>
             ) : (
-              <Pressable className={`send${draft.trim() ? '' : ' send-off'}`} onTap={send} disabled={sending}>
+              <Pressable className={`send${draft.trim() ? '' : ' send-off'}`} tip={t('chat.send')} onTap={send} disabled={sending}>
                 {sending ? <Spinner size={16} color={C['on-primary']} /> : <Icon name="arrowUp" size={20} color={C['on-primary']} />}
               </Pressable>
             )}
