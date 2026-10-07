@@ -93,6 +93,8 @@ export const pt: Dictionary = {
 
   'chat.placeholder': 'Mensagem para o {agent}…',
   'chat.send': 'Enviar',
+  'chat.interrupted': 'Interrompido por você',
+  'chat.toBottom': 'Ir para a última mensagem',
   'chat.stop': 'Parar',
   'chat.thinking': 'Pensando',
   'chat.thought': 'Raciocínio',

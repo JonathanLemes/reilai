@@ -37,6 +37,8 @@ export class ClaudeRunner implements AgentRunner {
   private openThinking = new Map<string, string[]>();
   private counter = 0;
   private closed = false;
+  /** set by interrupt(): the SDK ends that turn with an error result, which is not a failure */
+  private interrupting = false;
   /** aborting kills the claude process (close() alone only ends the input stream) */
   private readonly abort = new AbortController();
 
@@ -152,10 +154,12 @@ export class ClaudeRunner implements AgentRunner {
       }
       case 'result': {
         const isError = message.subtype !== 'success' || message.is_error;
-        host.turnEnd(isError ? 'failed' : 'completed', {
+        const interrupted = isError && this.interrupting;
+        this.interrupting = false;
+        host.turnEnd(interrupted ? 'interrupted' : isError ? 'failed' : 'completed', {
           durationMs: message.duration_ms,
           costUsd: message.total_cost_usd,
-          error: isError && 'result' in message ? String(message.result) : undefined,
+          error: isError && !interrupted && 'result' in message ? String(message.result) : undefined,
         });
         this.openText.clear();
         this.openThinking.clear();
@@ -168,6 +172,7 @@ export class ClaudeRunner implements AgentRunner {
 
   async send(text: string) {
     if (this.closed) throw new Error('Claude process has exited');
+    this.interrupting = false;
     this.host.turnStart();
     this.input.push({
       type: 'user',
@@ -177,7 +182,9 @@ export class ClaudeRunner implements AgentRunner {
   }
 
   async interrupt() {
-    if (!this.closed) await this.q.interrupt();
+    if (this.closed) return;
+    this.interrupting = true;
+    await this.q.interrupt();
   }
 
   async setMode(mode: PermissionMode) {

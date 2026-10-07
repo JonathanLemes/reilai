@@ -2,7 +2,7 @@ import { useEffect, useState } from '@lynx-js/react';
 import { type MessageKey, translateModelText, type Vars } from '@reilai/i18n';
 import { type AgentKind, PERMISSION_MODES, type PermissionMode, projectName } from '@reilai/protocol';
 
-import { findModel, shortModelLabel, useHello, useModels } from '../../shared/data';
+import { findModel, shortModelLabel, useDefaultMode, useHello, useModels } from '../../shared/data';
 import { useDraft } from '../../shared/draft';
 import { haptic, kvGet, kvSet, openSession, rpc } from '../../shared/host';
 import { C } from '../../shared/theme';
@@ -43,7 +43,7 @@ export function HomeComposer({
   const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState('');
   const [agent, setAgent] = useState<AgentKind>('claude');
-  const [mode, setMode] = useState<PermissionMode>('ask');
+  const [mode, setMode] = useDefaultMode(hello);
   const [model, setModel] = useState<string | null>(null);
   const [cwd, setCwd] = useState('');
   const [sheet, setSheet] = useState<'folder' | 'mode' | 'model' | null>(null);
@@ -62,7 +62,6 @@ export function HomeComposer({
 
   useEffect(() => {
     kvGet('new.agent').then((v) => (v === 'claude' || v === 'codex') && setAgent(v));
-    kvGet('new.mode').then((v) => v && PERMISSION_MODES.includes(v as PermissionMode) && setMode(v as PermissionMode));
     kvGet('home.cwd').then((v) => {
       if (v) return setCwd(v);
       rpc('fs.recent', {})
@@ -90,7 +89,6 @@ export function HomeComposer({
     setSending(true);
     haptic('light');
     kvSet('new.agent', agent);
-    kvSet('new.mode', mode);
     kvSet('home.cwd', cwd);
     try {
       const session = await rpc('sessions.create', { agent, cwd, prompt, mode, model, startedBy: 'app' });

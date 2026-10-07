@@ -1,6 +1,6 @@
 import { Database } from 'bun:sqlite';
 
-import type { Device, Message, PermissionMode, Session, Settings } from '@reilai/protocol';
+import { type Device, type Message, PERMISSION_MODES, type PermissionMode, type Session, type Settings } from '@reilai/protocol';
 
 type SessionRow = {
   id: string;
@@ -215,7 +215,11 @@ export class Store {
     const row = this.db.query<{ value: string }, [string]>('SELECT value FROM kv WHERE key = ?').get('settings');
     const saved = row ? (JSON.parse(row.value) as Partial<Settings>) : {};
     const timeout = Number(saved.sessionTimeoutMinutes);
-    return { language: saved.language ?? 'system', sessionTimeoutMinutes: Number.isFinite(timeout) && timeout > 0 ? timeout : 0 };
+    return {
+      language: saved.language ?? 'system',
+      sessionTimeoutMinutes: Number.isFinite(timeout) && timeout > 0 ? timeout : 0,
+      defaultMode: saved.defaultMode && PERMISSION_MODES.includes(saved.defaultMode) ? saved.defaultMode : 'ask',
+    };
   }
 
   saveSettings(settings: Settings) {

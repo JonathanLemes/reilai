@@ -2,7 +2,7 @@ import { useEffect, useInitData, useState } from '@lynx-js/react';
 import { translateModelText } from '@reilai/i18n';
 import { type AgentKind, PERMISSION_MODES, type PermissionMode } from '@reilai/protocol';
 
-import { findModel, useHello, useModels } from '../../shared/data';
+import { findModel, useDefaultMode, useHello, useModels } from '../../shared/data';
 import { dismiss, kvGet, kvSet, push, rpc, selectTab } from '../../shared/host';
 import { useLanguage, useLayout } from '../../shared/hooks';
 import { C } from '../../shared/theme';
@@ -20,7 +20,7 @@ export function NewSession() {
   const { safeTop, safeBottom, desktop } = useLayout();
   const hello = useHello();
   const [agent, setAgent] = useState<AgentKind>('claude');
-  const [mode, setMode] = useState<PermissionMode>('ask');
+  const [mode, setMode] = useDefaultMode(hello);
   const [model, setModel] = useState<string | null>(null);
   const [modelSheet, setModelSheet] = useState(false);
   const models = useModels(agent);
@@ -39,7 +39,6 @@ export function NewSession() {
       .then((list) => list[0] && setCwd((c) => c || list[0]!.path))
       .catch(() => {});
     kvGet('new.agent').then((v) => (v === 'claude' || v === 'codex') && setAgent(v));
-    kvGet('new.mode').then((v) => v && PERMISSION_MODES.includes(v as PermissionMode) && setMode(v as PermissionMode));
   }, []);
 
 
@@ -56,7 +55,6 @@ export function NewSession() {
     if (!cwd) return flash(t('new.noFolder'));
     setStarting(true);
     kvSet('new.agent', agent);
-    kvSet('new.mode', mode);
     try {
       const session = await rpc('sessions.create', { agent, cwd, mode, model, startedBy: 'app' });
       if (asTab) {

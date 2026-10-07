@@ -1,9 +1,9 @@
-import { useInitData, useState } from '@lynx-js/react';
+import { useState } from '@lynx-js/react';
 import type { SolarIconName } from '@reilai/brand';
 import type { MessageKey, Vars } from '@reilai/i18n';
 import type { AgentKind, Message, PermissionDecision } from '@reilai/protocol';
 
-import { copyText, push } from '../../shared/host';
+import { push } from '../../shared/host';
 import { useSelectable } from '../../shared/hooks';
 import { C } from '../../shared/theme';
 import { Button, Icon, Pressable, Spinner } from '../../ui/kit';
@@ -39,17 +39,11 @@ function inputPreview(name: string, input: unknown): string {
   return json.length > 3000 ? `${json.slice(0, 3000)}\n…` : json;
 }
 
-/** Native: long press copies the whole message. Web: the text is selectable instead. */
-function useCopyOnLongPress(text: string | undefined) {
-  const init = useInitData();
-  return init.platform === 'web' ? undefined : () => copyText(text ?? '');
-}
-
 export function UserBubble({ m }: { m: Message }) {
   const sel = useSelectable();
   return (
     <view className="ubub-row">
-      <view className="ubub" bindlongpress={useCopyOnLongPress(m.text)}>
+      <view className="ubub">
         <text className="t-body" style={{ color: C['on-user-bubble'] }} {...sel}>
           {m.text}
         </text>
@@ -72,7 +66,7 @@ function toolPaths(input: unknown): string[] {
 
 export function AgentText({ m, cwd }: { m: Message; cwd: string }) {
   return (
-    <view className="atext" bindlongpress={useCopyOnLongPress(m.text)}>
+    <view className="atext">
       <Markdown text={m.text ?? ''} onOpenPath={(path) => openFile(path, cwd)} />
       {m.streaming && <view className="caret pulse" />}
     </view>
@@ -248,12 +242,14 @@ export function EventLine({ m, t }: { m: Message; t: T }) {
       </view>
     );
   }
-  const isError = e.type === 'error';
+  // a turn stopped by the user is not an error
+  const interrupted = e.text === 'interrupted';
+  const isError = e.type === 'error' && !interrupted;
   return (
     <view className={isError ? 'evt-err' : 'evt-info'}>
       <Icon name={isError ? 'danger' : 'info'} size={15} color={isError ? C.danger : C['text-secondary']} />
       <text className="t-sub grow" style={{ marginLeft: '8px', color: isError ? C.danger : C['text-secondary'] }} {...sel}>
-        {e.text === 'interrupted' ? t('chat.stop') : (e.text ?? t('error.generic'))}
+        {interrupted ? t('chat.interrupted') : (e.text ?? t('error.generic'))}
       </text>
     </view>
   );

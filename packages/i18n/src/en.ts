@@ -104,6 +104,8 @@ export const en = {
   // chat
   'chat.placeholder': 'Message {agent}…',
   'chat.send': 'Send',
+  'chat.interrupted': 'Stopped by you',
+  'chat.toBottom': 'Go to the latest message',
   'chat.stop': 'Stop',
   'chat.thinking': 'Thinking',
   'chat.thought': 'Thought',

@@ -48,8 +48,11 @@ self-hosted remote control for **Claude Code** and **Codex**, inspired by
   faded. **Resume** (or just sending a message) restarts the agent with its previous context and
   unarchives the session.
 - Unsent text is kept per conversation (and on the home field), so closing the app or switching
-  sessions never loses a half-written message. Replies, code and tool output are selectable on the
-  web; code blocks have a copy button that confirms the copy.
+  sessions never loses a half-written message. Replies, code and tool output are selectable (mouse
+  on the desktop, long press on phones); code blocks have a copy button that confirms the copy.
+  A floating button takes you back to the latest message.
+- The last permission mode you pick (on the start screen or inside a conversation, on any device)
+  becomes the default of new sessions.
 - Light, dark or system theme. Desktop layout with a sessions sidebar and a message field you can
   resize by dragging their edges (remembered per device, double click to reset), tooltips on the
   icon buttons and a **New chat** button while a conversation is open; mobile layout with a

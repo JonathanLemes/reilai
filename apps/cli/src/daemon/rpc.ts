@@ -6,6 +6,7 @@ import {
   type AgentAvailability,
   type DirEntry,
   PERMISSION_MODES,
+  type PermissionMode,
   type RpcMethod,
   type RpcMethods,
   RpcError,
@@ -68,6 +69,14 @@ function requireString(value: unknown, name: string): string {
 }
 
 export function createHandlers(store: Store, sessions: SessionManager, broadcast: Broadcast): Handlers {
+  /** The mode picked last (in any client) becomes the default of new sessions. */
+  const rememberMode = (mode: PermissionMode) => {
+    const current = store.getSettings();
+    if (current.defaultMode === mode) return;
+    const next = { ...current, defaultMode: mode };
+    store.saveSettings(next);
+    broadcast('settings.changed', next);
+  };
   return {
     async hello() {
       return {
@@ -87,7 +96,8 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
         agent: p.agent,
         cwd: expand(requireString(p.cwd, 'cwd')),
         prompt: p.prompt,
-        mode: p.mode && PERMISSION_MODES.includes(p.mode) ? p.mode : undefined,
+        // terminal sessions keep the agent's own default unless a mode is given
+        mode: p.mode && PERMISSION_MODES.includes(p.mode) ? p.mode : p.terminal ? undefined : store.getSettings().defaultMode,
         model: p.model && p.model !== 'default' ? p.model : null,
         startedBy: p.startedBy,
         terminal: p.terminal === true,
@@ -107,7 +117,9 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
     'sessions.resume': (p) => sessions.resume(requireString(p.id, 'id')),
     'sessions.setMode': (p) => {
       if (!PERMISSION_MODES.includes(p.mode)) throw new RpcError('bad_request', 'Unknown mode');
-      return sessions.setMode(requireString(p.id, 'id'), p.mode);
+      const session = sessions.setMode(requireString(p.id, 'id'), p.mode);
+      rememberMode(p.mode);
+      return session;
     },
     'sessions.setModel': (p) => sessions.setModel(requireString(p.id, 'id'), typeof p.model === 'string' && p.model ? p.model : null),
     'agents.models': (p) => {
@@ -168,6 +180,10 @@ export function createHandlers(store: Store, sessions: SessionManager, broadcast
     'settings.set': (p) => {
       const next: Settings = { ...store.getSettings() };
       if (p.language === 'en' || p.language === 'pt' || p.language === 'system') next.language = p.language;
+      if (p.defaultMode !== undefined) {
+        if (!PERMISSION_MODES.includes(p.defaultMode)) throw new RpcError('bad_request', 'Unknown mode');
+        next.defaultMode = p.defaultMode;
+      }
       if (p.sessionTimeoutMinutes !== undefined) {
         const minutes = Number(p.sessionTimeoutMinutes);
         if (!Number.isFinite(minutes) || minutes < 0) throw new RpcError('bad_request', 'sessionTimeoutMinutes must be >= 0');

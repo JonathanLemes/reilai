@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLynxGlobalEventListener, useRef, useState } from '@lynx-js/react';
-import type { AgentAvailability, AgentKind, MachineInfo, Message, ModelOption, Session, Settings } from '@reilai/protocol';
+import type { AgentAvailability, AgentKind, MachineInfo, Message, ModelOption, PermissionMode, Session, Settings } from '@reilai/protocol';
 
 import { rpc } from './host';
 import { useServerEvent } from './hooks';
@@ -69,21 +69,36 @@ export function useConversation(id: string | undefined) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // a late answer for the previous session (fast switching) must not land in this one
+  const currentId = useRef(id);
+  currentId.current = id;
+  /** older pages already on screen, so a reload (reconnect) does not drop them */
+  const shown = useRef<{ messages: Message[]; hasMore: boolean }>({ messages: [], hasMore: false });
+  shown.current = { messages, hasMore };
+
   const load = useCallback(() => {
     if (!id) return;
     rpc('sessions.get', { id, limit: 120 })
       .then((r) => {
+        if (currentId.current !== id) return;
+        // reconnects reload the latest page: keep what the reader had loaded above it,
+        // otherwise the list loses everything over the viewport and the scroll jumps
+        const first = r.messages[0]?.seq;
+        const had = shown.current.messages.filter((m) => m.sessionId === id);
+        // only when the new page overlaps what was shown (no gap of missed messages in between)
+        const older = first === undefined || !had.some((m) => m.seq >= first) ? [] : had.filter((m) => m.seq < first);
         setSession(r.session);
-        setMessages(r.messages);
-        setHasMore(r.hasMore);
+        setMessages(older.length ? [...older, ...r.messages] : r.messages);
+        setHasMore(older.length ? shown.current.hasMore : r.hasMore);
         setError(null);
       })
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e: Error) => currentId.current === id && setError(e.message))
+      .finally(() => currentId.current === id && setLoading(false));
   }, [id]);
 
   useEffect(() => {
     setLoading(true);
+    shown.current = { messages: [], hasMore: false };
     setMessages([]);
     setSession(null);
     load();
@@ -145,6 +160,23 @@ export function useHello() {
     if (event === 'settings.changed') setInfo((i) => (i ? { ...i, settings: data as Settings } : i));
   });
   return info;
+}
+
+/**
+ * Mode of new sessions: the daemon keeps the last one picked (here or in any chat,
+ * on any device), so every start screen opens with it.
+ */
+export function useDefaultMode(hello: HelloInfo | null): [PermissionMode, (mode: PermissionMode) => void] {
+  const [mode, setMode] = useState<PermissionMode>(hello?.settings.defaultMode ?? 'ask');
+  const saved = hello?.settings.defaultMode;
+  useEffect(() => {
+    if (saved) setMode(saved);
+  }, [saved]);
+  const pick = (next: PermissionMode) => {
+    setMode(next);
+    rpc('settings.set', { defaultMode: next }).catch(() => {});
+  };
+  return [mode, pick];
 }
 
 const modelCache = new Map<AgentKind, Promise<ModelOption[]>>();

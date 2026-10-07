@@ -77,14 +77,14 @@ export function useTick(ms = 30_000) {
 }
 
 /**
- * Props that make a `<text>` selectable with the mouse or the browser's own touch
- * selection (Lynx web renders text as `user-select: none` otherwise). Native hosts
- * keep long press to copy the whole message instead.
+ * Props that make a `<text>` selectable: mouse or the browser's touch selection on the
+ * web (Lynx web renders text as `user-select: none` otherwise), long press with the
+ * system selection handles and copy menu on native (which needs an unflattened text).
  */
-export function useSelectable(): { 'text-selection'?: boolean } {
+export function useSelectable(): { 'text-selection': true; flatten?: false } {
   const init = useInitData();
-  return init.platform === 'web' ? SELECTABLE : NONE;
+  return init.platform === 'web' ? SELECTABLE_WEB : SELECTABLE_NATIVE;
 }
 
-const SELECTABLE = { 'text-selection': true } as const;
-const NONE = {};
+const SELECTABLE_WEB = { 'text-selection': true } as const;
+const SELECTABLE_NATIVE = { 'text-selection': true, flatten: false } as const;

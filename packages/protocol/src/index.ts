@@ -110,6 +110,8 @@ export interface Settings {
   language: LanguagePref;
   /** Minutes an idle agent stays alive before it is stopped; 0 = never (ended by hand or by archiving). */
   sessionTimeoutMinutes: number;
+  /** Permission mode of new sessions: the last one picked in any client. */
+  defaultMode: PermissionMode;
 }
 
 /** Choices offered by the clients for `sessionTimeoutMinutes` (0 = never). */

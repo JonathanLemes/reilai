@@ -65,9 +65,9 @@ describe('store', () => {
     store.insertSession(session('b', { archived: true }));
     expect(store.listSessions().map((s) => s.id)).toEqual(['a']);
     expect(store.listSessions(true).map((s) => s.id)).toEqual(['b']);
-    expect(store.getSettings()).toEqual({ language: 'system', sessionTimeoutMinutes: 0 });
-    store.saveSettings({ language: 'pt', sessionTimeoutMinutes: 30 });
-    expect(store.getSettings()).toEqual({ language: 'pt', sessionTimeoutMinutes: 30 });
+    expect(store.getSettings()).toEqual({ language: 'system', sessionTimeoutMinutes: 0, defaultMode: 'ask' });
+    store.saveSettings({ language: 'pt', sessionTimeoutMinutes: 30, defaultMode: 'yolo' });
+    expect(store.getSettings()).toEqual({ language: 'pt', sessionTimeoutMinutes: 30, defaultMode: 'yolo' });
   });
 
   test('devices are unique by public key', () => {

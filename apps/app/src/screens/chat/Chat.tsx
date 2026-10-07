@@ -87,7 +87,16 @@ export function Chat() {
   const lastCount = useRef(0);
   /** follow new content only while the reader is at the bottom (scrolling up detaches) */
   const pinned = useRef(true);
-  const initialIndex = useRef<number | null>(null);
+  /** list viewport height (web scroll events do not carry it) */
+  const viewHeight = useRef(0);
+  /** floating "go to the end" button: shown once the reader is about a screen away */
+  const [farFromEnd, setFarFromEnd] = useState(false);
+  const far = useRef(false);
+  const setFar = (value: boolean) => {
+    if (far.current === value) return;
+    far.current = value;
+    setFarFromEnd(value);
+  };
   /** older pages only after the first jump to the end (the top is briefly visible while it lands) */
   const settledAt = useRef(0);
   const scrollTop = useRef(0);
@@ -130,7 +139,7 @@ export function Chat() {
   useEffect(() => {
     scrolledOnce.current = false;
     pinned.current = true;
-    initialIndex.current = null;
+    setFar(false);
     settledAt.current = Number.MAX_SAFE_INTEGER;
   }, [id]);
 
@@ -189,6 +198,12 @@ export function Chat() {
     }
   };
 
+  const jumpToEnd = () => {
+    pinned.current = true;
+    setFar(false);
+    scrollToEnd(messages.length, true);
+  };
+
   const lastIsStreaming = tail?.streaming || tail?.tool?.status === 'running' || tail?.permission?.status === 'pending';
 
   return (
@@ -233,13 +248,16 @@ export function Chat() {
       ) : error && !session ? (
         <EmptyState icon="danger" title={t('error.load')} body={error === 'deleted' ? undefined : error} />
       ) : (
+        <view className="chat-body" bindlayoutchange={(e: { detail: { height: number } }) => (viewHeight.current = e.detail.height)}>
         <list
           id="chat-list"
           className="chat-list"
           list-type="single"
           span-count={1}
           scroll-orientation="vertical"
-          initial-scroll-index={(initialIndex.current ??= messages.length + 1)}
+          // always the tail: the web list applies it again whenever it is re-attached,
+          // and a value fixed at mount would throw the reader back to an old message
+          initial-scroll-index={messages.length + 1}
           upper-threshold-item-count={2}
           lower-threshold-item-count={1}
           scroll-event-throttle={32}
@@ -252,10 +270,16 @@ export function Chat() {
           }}
           bindscrolltolower={() => {
             pinned.current = true;
+            setFar(false);
           }}
-          bindscroll={(e: { detail: { deltaY: number; scrollTop: number } }) => {
-            scrollTop.current = e.detail.scrollTop;
-            if (e.detail.deltaY < -2) pinned.current = false;
+          bindscroll={(e: { detail: { deltaY: number; scrollTop: number; scrollHeight?: number; listHeight?: number } }) => {
+            const d = e.detail;
+            scrollTop.current = d.scrollTop;
+            const height = d.listHeight ?? viewHeight.current;
+            const distance = height && d.scrollHeight ? d.scrollHeight - d.scrollTop - height : null;
+            if (d.deltaY < -2) pinned.current = false;
+            else if (distance !== null && distance < 40) pinned.current = true;
+            if (distance !== null) setFar(distance > Math.max(300, height * 0.6));
           }}
         >
           <list-item item-key="intro" key="intro">
@@ -301,6 +325,12 @@ export function Chat() {
             <view style={{ height: '12px' }} />
           </list-item>
         </list>
+        {farFromEnd && (
+          <Pressable className="jump" pressedClassName="jump-pressed" tip={t('chat.toBottom')} onTap={jumpToEnd}>
+            <Icon name="chevronDown" size={20} color={C.text} />
+          </Pressable>
+        )}
+        </view>
       )}
 
       {session && (
